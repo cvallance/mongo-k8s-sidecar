@@ -1,0 +1,32 @@
+id: mongo-test-ctl
+kind: ReplicationController
+apiVersion: v1beta2
+desiredState:
+  replicas: 3
+  replicaSelector:
+    name: mongo
+    environment: test
+  podTemplate:
+    desiredState:
+      manifest:
+        version: v1beta2
+        id: mongo-test
+        containers:
+          - name: mongo
+            image: mongo
+            command:
+              - mongod
+              - "--replSet"
+              - rs0
+              - "--smallfiles"
+              - "--noprealloc"
+            ports:
+              - containerPort: 27017
+          - name: mongo-sidecar
+            image: leportlabs/mongo-k8s-sidecar
+            env:
+              - name: MONGO_SIDECAR_POD_LABELS
+                value: "name:mongo,environment:test"
+    labels:
+      name: mongo
+      environment: test
