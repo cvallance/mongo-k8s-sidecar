@@ -18,7 +18,9 @@ var getDb = function(host, done) {
   host = host || localhost;
   var mongoDb = new Db('local', new MongoServer(host, 27017));
   mongoDb.open(function (err, db) {
-    if (err) return done(err);
+    if (err) {
+      return done(err);
+    }
 
     return done(null, db);
   });

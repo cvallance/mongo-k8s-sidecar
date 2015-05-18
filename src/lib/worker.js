@@ -44,8 +44,7 @@ var workloop = function workloop() {
     //Lets remove any pods that aren't running
     for (var i = pods.length - 1; i >= 0; i--) {
       var pod = pods[i];
-
-      if (pod.currentState.status !== 'Running') {
+      if (pod.status.phase !== 'Running') {
         pods.splice(i, 1);
       }
     }
@@ -123,11 +122,11 @@ var primaryWork = function(db, pods, members, shouldForce, done) {
   var addrToAdd = [];
   for (var i in pods) {
     var pod = pods[i];
-    if (pod.currentState.status !== 'Running') {
+    if (pod.status.phase !== 'Running') {
       continue;
     }
 
-    var podIp = pod.currentState.podIP;
+    var podIp = pod.status.podIP;
     var podAddr = podIp  + ':27017';
     var podInRs = false;
     for (var j in members) {
@@ -169,15 +168,20 @@ var memberShouldBeRemoved = function(member) {
 };
 
 var notInReplicaSet = function(db, pods, done) {
+  var createTestRequest = function(pod) {
+    return function(completed) {
+      mongo.isInReplSet(pod.status.podIP, completed);
+    };
+  };
+
   //If we're not in a rs and others ARE in the rs, just continue, another path will ensure we will get added
   //If we're not in a rs and no one else is in a rs, elect one to kick things off
   var testRequests = [];
   for (var i in pods) {
     var pod = pods[i];
-    if (pod.currentState.status === 'Running') {
-      testRequests.push(function(completed) {
-        mongo.isInReplSet(pod.currentState.podIP, completed);
-      });
+
+    if (pod.status.phase === 'Running') {
+      testRequests.push(createTestRequest(pod));
     }
   }
 
@@ -206,15 +210,15 @@ var podElection = function(pods) {
   //Because all the pods are going to be running this code independently, we need a way to consistently find the same
   //node to kick things off, the easiest way to do that is convert their ips into longs and find the highest
   pods.sort(function(a,b) {
-    var aIpVal = ip.toLong(a.currentState.podIP);
-    var bIpVal = ip.toLong(b.currentState.podIP);
+    var aIpVal = ip.toLong(a.status.podIP);
+    var bIpVal = ip.toLong(b.status.podIP);
     if (aIpVal < bIpVal) return -1;
     if (aIpVal > bIpVal) return 1;
     return 0; //Shouldn't get here... all pods should have different ips
   });
 
   //Are we the lucky one?
-  return pods[0].currentState.podIP == hostIp;
+  return pods[0].status.podIP == hostIp;
 };
 
 module.exports = {

@@ -1,12 +1,16 @@
-var getPodLabels = function() {
-  if (!process.env.MONGO_SIDECAR_POD_LABELS) {
-    throw new Error('Enivronment variable "MONGO_SIDECAR_POD_LABELS" must be supplied. Is should contain a comma ' +
-      'delimited list of values. E.g. "name:mongo,environment:dev".');
+var getMongoPodLabels = function() {
+  return process.env.LL_MONGO_POD_LABELS || false;
+};
+
+var getMongoPodLabelCollection = function() {
+  var podLabels = getMongoPodLabels();
+  if (!podLabels) {
+    return false;
   }
 
-  var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
+  var labels = process.env.LL_MONGO_POD_LABELS.split(',');
   for (var i in labels) {
-    var keyAndValue = labels[i].split(':');
+    var keyAndValue = labels[i].split('=');
     labels[i] = {
       key: keyAndValue[0],
       value: keyAndValue[1]
@@ -21,9 +25,10 @@ var getKubernetesROServiceAddress = function() {
 };
 
 module.exports = {
-  podLabelS: getPodLabels(),
-  kubernetesROServiceAddress: getKubernetesROServiceAddress(),
   loopSleepSeconds: process.env.MONGO_SIDECAR_SLEEP_SECONDS || 5,
   unhealthySeconds: process.env.MONGO_SIDECAR_UNHEALTHY_SECONDS || 15,
-  env: process.env.NODE_ENV || 'local'
+  env: process.env.NODE_ENV || 'local',
+  mongoPodLabels: getMongoPodLabels(),
+  mongoPodLabelCollection: getMongoPodLabelCollection(),
+  kubernetesROServiceAddress: getKubernetesROServiceAddress()
 };
