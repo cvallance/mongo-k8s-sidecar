@@ -3,8 +3,9 @@ var config = require('./config');
 
 var client = new Client({
   host:  config.kubernetesROServiceAddress,
-  protocol: 'http',
-  version: 'v1beta3'
+  protocol: 'https',
+  version: 'v1',
+  token: 'XYZ'
 });
 
 var getMongoPods = function getPods(done) {
@@ -12,7 +13,6 @@ var getMongoPods = function getPods(done) {
     if (err) {
       return done(err);
     }
-
     var pods = podResult[0].items;
     var labels = config.mongoPodLabelCollection;
     var results = [];
