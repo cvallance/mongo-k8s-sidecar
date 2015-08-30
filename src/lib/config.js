@@ -1,5 +1,5 @@
 var getMongoPodLabels = function() {
-  return process.env.LL_MONGO_POD_LABELS || false;
+  return process.env.MONGO_SIDECAR_POD_LABELS || false;
 };
 
 var getMongoPodLabelCollection = function() {
@@ -8,7 +8,7 @@ var getMongoPodLabelCollection = function() {
     return false;
   }
 
-  var labels = process.env.LL_MONGO_POD_LABELS.split(',');
+  var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
   for (var i in labels) {
     var keyAndValue = labels[i].split('=');
     labels[i] = {
