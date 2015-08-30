@@ -7,10 +7,10 @@ var getMongoPodLabelCollection = function() {
   if (!podLabels) {
     return false;
   }
-
+# MONGO_SIDECAR_POD_LABELS=name:mongo,environment:test
   var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
   for (var i in labels) {
-    var keyAndValue = labels[i].split('=');
+    var keyAndValue = labels[i].split(':');
     labels[i] = {
       key: keyAndValue[0],
       value: keyAndValue[1]
@@ -21,7 +21,7 @@ var getMongoPodLabelCollection = function() {
 };
 
 var getKubernetesROServiceAddress = function() {
-  return process.env.KUBERNETES_RO_SERVICE_HOST + ":" + process.env.KUBERNETES_RO_SERVICE_PORT
+  return process.env.KUBERNETES_SERVICE_HOST + ":" + process.env.KUBERNETES_SERVICE_PORT
 };
 
 module.exports = {
