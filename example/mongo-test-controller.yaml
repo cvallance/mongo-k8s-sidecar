@@ -28,7 +28,7 @@ spec:
           image: leportlabs/mongo-k8s-sidecar
           env:
             - name: MONGO_SIDECAR_POD_LABELS
-              value: "name:mongo,environment:test"
+              value: "name=mongo,environment=test"
     metadata:
       labels:
         name: mongo
