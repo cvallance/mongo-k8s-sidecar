@@ -1,14 +1,10 @@
 var Client = require('node-kubernetes-client');
 var config = require('./config');
+var util = require("util");
+
 fs = require('fs');
 
-var readToken='';
-fs.readFile('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8', function (err,data) {
-  if (err) {
-    return console.log(err);
-  }
-  readToken=data;
-});
+var readToken = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token');
 
 var client = new Client({
   host:  config.kubernetesROServiceAddress,
@@ -16,8 +12,6 @@ var client = new Client({
   version: 'v1',
   token: readToken
 });
-
-// /var/run/secrets/kubernetes.io/serviceaccount
 
 var getMongoPods = function getPods(done) {
   client.pods.get(function (err, podResult) {
