@@ -1,0 +1,45 @@
+id: mongo-persistent-storage-node-2-ctl
+kind: ReplicationController
+apiVersion: v1
+metadata:
+  name: mongo
+spec:
+  replicas: 1
+  selector:
+    name: mongo-node-2
+    role: mongo
+    environment: test
+  template:
+    spec:
+      manifest:
+        version: v1
+        id: mongo-persistent-storage-node-2
+      containers:
+        - name: mongo-node-2
+          image: mongo
+          command:
+            - mongod
+            - "--replSet"
+            - rs0
+            - "--smallfiles"
+            - "--noprealloc"
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-persistent-storage
+              mountPath: /data/db
+        - name: mongo-sidecar
+          image: leportlabs/mongo-k8s-sidecar
+          env:
+            - name: MONGO_SIDECAR_POD_LABELS
+              value: "role=mongo,environment=test"
+      volumes:
+        - name: mongo-persistent-storage
+          gcePersistentDisk:
+            pdName: mongo-persistent-storage-node-2-disk
+            fsType: ext4
+    metadata:
+      labels:
+        name: mongo-node-2
+        role: mongo
+        environment: test
