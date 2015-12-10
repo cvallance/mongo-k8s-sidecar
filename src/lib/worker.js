@@ -218,7 +218,7 @@ var podElection = function(pods) {
   });
 
   //Are we the lucky one?
-  return pods.length >= 3 && pods[0].status.podIP == hostIp;
+  return pods[0].status.podIP == hostIp;
 };
 
 module.exports = {
