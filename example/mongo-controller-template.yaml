@@ -1,20 +1,17 @@
-id: mongo-test-ctl
 kind: ReplicationController
 apiVersion: v1
 metadata:
-  name: mongo
+  name: mongo-<num>
 spec:
-  replicas: 3
+  replicas: 1
   selector:
-    name: mongo
+    name: mongo-node-<num>
+    role: mongo
     environment: test
   template:
     spec:
-      manifest:
-        version: v1
-        id: mongo-test
       containers:
-        - name: mongo
+        - name: mongo-node-<num>
           image: mongo
           command:
             - mongod
@@ -24,12 +21,21 @@ spec:
             - "--noprealloc"
           ports:
             - containerPort: 27017
+          volumeMounts:
+            - name: mongo-persistent-storage
+              mountPath: /data/db
         - name: mongo-sidecar
           image: leportlabs/mongo-k8s-sidecar
           env:
             - name: MONGO_SIDECAR_POD_LABELS
-              value: "name=mongo,environment=test"
+              value: "role=mongo,environment=test"
+      volumes:
+        - name: mongo-persistent-storage
+          gcePersistentDisk:
+            pdName: mongo-persistent-storage-node-<num>-disk
+            fsType: ext4
     metadata:
       labels:
-        name: mongo
+        name: mongo-node-<num>
+        role: mongo
         environment: test
