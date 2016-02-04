@@ -1,0 +1,12 @@
+# How to use this makefile
+- Count how many MongoDB instances are up
+   - ```make count```
+- Add a replica
+   - ```make add-replica```
+   - Options:
+     - ```DISK_SIZE``` (i.e 500GB, 1TB)
+     - ```ZONE``` (i.e us-central1-f)
+     - ```ENV``` (i.e GoogleCloudPlatform)
+- Delete a replica
+   - ```make delete-replica```
+   - This will delete the last replica that was added
