@@ -7,6 +7,8 @@ DISK_SIZE=500GB
 
 ENV=GoogleCloudPlatform
 
+CREATE_SERVICE=TRUE
+
 count:
 	@echo 'Current Number of MongoDB Replicas: $(NUM_REPLICAS)'
 
@@ -17,12 +19,19 @@ ifeq ($(ENV),GoogleCloudPlatform)
 	
 	@echo 'Adding Replica'
 	-sed -e 's~<num>~$(NEW_REPLICA_NUM)~g' mongo-controller-template.yaml | kubectl create -f -
+	
 endif
 ifeq ($(ENV),AWS)
 	@echo 'AWS not supported yet'
 endif
+ifeq ($(CREATE_SERVICE),TRUE)
+	@echo 'Creating Service'
+	-sed -e 's~<num>~$(NEW_REPLICA_NUM)~g' mongo-service-template.yaml | kubectl create -f -
+endif
 
 delete-replica:
+	@echo 'Deleting Service'
+	-kubectl delete svc mongo-$(NUM_REPLICAS)
 ifeq ($(ENV),GoogleCloudPlatform)
 	@echo 'Deleting Replic'
 	-kubectl delete rc mongo-$(NUM_REPLICAS)
