@@ -1,5 +1,6 @@
 var Db = require('mongodb').Db;
 var MongoServer = require('mongodb').Server;
+var async = require('async');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
@@ -61,7 +62,9 @@ var initReplSet = function(db, hostIpAndPort, done) {
       }
 
       config.members[0].host = hostIpAndPort;
-      replSetReconfig(db, config, false, function(err) {
+      async.retry({times: 20, interval: 500}, function(callback) {
+        replSetReconfig(db, config, false, callback);
+      }, function(err, results) {
         if (err) {
           return done(err);
         }
