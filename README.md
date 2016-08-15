@@ -6,10 +6,10 @@ resilient to the various conditions both mongo and kubernetes can find themselve
 ## How to use it
 
 The docker image is hosted on docker hub and can be found here:  
-https://registry.hub.docker.com/u/leportlabs/mongo-k8s-sidecar/
+https://hub.docker.com/r/cvallance/mongo-k8s-sidecar/
 
 An example kubernetes replication controller can be found in the examples directory on github here:  
-https://github.com/leportlabs/mongo-k8s-sidecar
+https://github.com/cvallance/mongo-k8s-sidecar
 
 There you will also find some helper scripts to test out creating the replica set and resizing it.
 
