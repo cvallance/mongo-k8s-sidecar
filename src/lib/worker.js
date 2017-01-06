@@ -63,6 +63,11 @@ var workloop = function workloop() {
             finish(err, db);
           });
         }
+        else if (err.code && err.code == 93) {
+          invalidReplicaSet(db, pods, function(err) {
+            finish(err, db);
+          });
+        }
         else {
           finish(err, db);
         }
@@ -119,28 +124,7 @@ var inReplicaSet = function(db, pods, status, done) {
 var primaryWork = function(db, pods, members, shouldForce, done) {
   //Loop over all the pods we have and see if any of them aren't in the current rs members array
   //If they aren't in there, add them
-  var addrToAdd = [];
-  for (var i in pods) {
-    var pod = pods[i];
-    if (pod.status.phase !== 'Running') {
-      continue;
-    }
-
-    var podIp = pod.status.podIP;
-    var podAddr = podIp  + ':27017';
-    var podInRs = false;
-    for (var j in members) {
-      var member = members[j];
-      if (member.name === podAddr) {
-        podInRs = true;
-        continue;
-      }
-    }
-
-    if (!podInRs) {
-      addrToAdd.push(podAddr);
-    }
-  }
+  var addrToAdd = addrToAddLoop(pods, members);
 
   //Separate loop for removing members
   var addrToRemove = [];
@@ -206,6 +190,19 @@ var notInReplicaSet = function(db, pods, done) {
   });
 };
 
+var invalidReplicaSet = function(db, pods, done) {
+  // The replica set has become invalid, probably due to catastrophic errors like all nodes going down
+  // this will force elect a new primary and re-initialize the replica set. There is a small chance for data loss here
+  // because it is forcing a reconfigure, but chances are recovering from the invalid state is more important
+  if(podElection){
+    console.log("Invalid set, elected to primary")
+    var addrToAdd = addrToAddLoop(pods, []);
+    mongo.addNewReplSetMembers(db, addrToAdd, [], true, function(err) {
+      finish(err, db);
+    });
+  }
+}
+
 var podElection = function(pods) {
   //Because all the pods are going to be running this code independently, we need a way to consistently find the same
   //node to kick things off, the easiest way to do that is convert their ips into longs and find the highest
@@ -220,6 +217,32 @@ var podElection = function(pods) {
   //Are we the lucky one?
   return pods[0].status.podIP == hostIp;
 };
+
+var addrToAddLoop = function(pods, members) {
+  var addrToAdd = [];
+  for (var i in pods) {
+    var pod = pods[i];
+    if (pod.status.phase !== 'Running') {
+      continue;
+    }
+
+    var podIp = pod.status.podIP;
+    var podAddr = podIp  + ':27017';
+    var podInRs = false;
+    for (var j in members) {
+      var member = members[j];
+      if (member.name === podAddr) {
+        podInRs = true;
+        continue;
+      }
+    }
+
+    if (!podInRs) {
+      addrToAdd.push(podAddr);
+    }
+  }
+  return addrToAdd;
+}
 
 module.exports = {
   init: init,
