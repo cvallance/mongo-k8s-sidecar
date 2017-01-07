@@ -191,16 +191,14 @@ var notInReplicaSet = function(db, pods, done) {
 };
 
 var invalidReplicaSet = function(db, pods, done) {
-  // The replica set has become invalid, probably due to catastrophic errors like all nodes going down
-  // this will force elect a new primary and re-initialize the replica set. There is a small chance for data loss here
+  // The replica set config has become invalid, probably due to catastrophic errors like all nodes going down
+  // this will force re-initialize the replica set on this node. There is a small chance for data loss here
   // because it is forcing a reconfigure, but chances are recovering from the invalid state is more important
-  if(podElection){
-    console.log("Invalid set, elected to primary")
-    var addrToAdd = addrToAddLoop(pods, []);
-    mongo.addNewReplSetMembers(db, addrToAdd, [], true, function(err) {
-      finish(err, db);
-    });
-  }
+  console.log("Invalid set, re-initializing")
+  var addrToAdd = addrToAddLoop(pods, []);
+  mongo.addNewReplSetMembers(db, addrToAdd, [], true, function(err) {
+    finish(err, db);
+  });
 }
 
 var podElection = function(pods) {
