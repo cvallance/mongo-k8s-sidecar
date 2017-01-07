@@ -197,7 +197,7 @@ var invalidReplicaSet = function(db, pods, done) {
   console.log("Invalid set, re-initializing")
   var addrToAdd = addrToAddLoop(pods, []);
   mongo.addNewReplSetMembers(db, addrToAdd, [], true, function(err) {
-    finish(err, db);
+    done(err, db);
   });
 }
 
