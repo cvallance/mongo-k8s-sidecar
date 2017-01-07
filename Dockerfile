@@ -1,9 +1,9 @@
 FROM node:latest
-MAINTAINER LePort Labs
+MAINTAINER Charles Vallance <vallance.charles@gmail.com>
 
-COPY . /opt/leport/mongo-k8s-sidecar
+COPY . /opt/cvallance/mongo-k8s-sidecar
 
-WORKDIR /opt/leport/mongo-k8s-sidecar
+WORKDIR /opt/cvallance/mongo-k8s-sidecar
 
 RUN npm install
 
