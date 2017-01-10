@@ -15,20 +15,27 @@ The storage class will create the [Volumes](http://kubernetes.io/docs/user-guide
 
 You can create Storage Classes with different provisioners depending on your Kubernetes environment. There are provisioners for [Google Cloud](http://kubernetes.io/docs/user-guide/persistent-volumes/#gce), [AWS](http://kubernetes.io/docs/user-guide/persistent-volumes/#aws), [Azure](http://kubernetes.io/docs/user-guide/persistent-volumes/#azure-disk), [GlusterFS](http://kubernetes.io/docs/user-guide/persistent-volumes/#glusterfs), [OpenStack Cinder](http://kubernetes.io/docs/user-guide/persistent-volumes/#openstack-cinder), [vSphere](http://kubernetes.io/docs/user-guide/persistent-volumes/#vsphere), [Ceph RBD](http://kubernetes.io/docs/user-guide/persistent-volumes/#ceph-rbd), and [Quobyte](http://kubernetes.io/docs/user-guide/persistent-volumes/#quobyte). Pick the right one for your deployment.
 
-The [example YAML](googlecloud_ssd.yaml) uses a Google Cloud SSD Persistent Disk, and has the name "ssd"
+For example, this [YAML](googlecloud_ssd.yaml) uses a Google Cloud SSD Persistent Disk, and has the name "fast"
 
-Create the Storage Class with the `kubectl` tool. Replace `googlecloud_ssd.yaml` with your own configuration file if you are not using Google Cloud:
+Create the Storage Class with the `kubectl` tool.
 
 ```
 kubectl apply -f googlecloud_ssd.yaml
 ```
+
+Replace `googlecloud_ssd.yaml` with another configuration file if you are not using Google Cloud. For example, if you are running Kubernetes on Azure, you can use the Azure SSD [YAML](azure_ssd.yaml). It uses the same name, "fast", so your application does not need to understand the underlying platform.
+
+```
+kubectl apply -f azure_ssd.yaml
+```
+
 
 Verify that the Storage Class is created
 
 ```
 $ kubectl get storageclass   
 NAME      TYPE
-ssd       kubernetes.io/gce-pd 
+fast       kubernetes.io/gce-pd
 ```
 
 ## Creating the Stateful Set
@@ -75,7 +82,7 @@ mongo-1.mongo
 mongo-2.mongo
 ```
 
-Put this in your connection url. For example:
+Put these in your connection url. For example:
 
 ```
 mongodb://mongo-0.mongo,mongo-1.mongo,mongo-2.mongo:27017/dbname_?'
