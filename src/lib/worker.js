@@ -9,9 +9,12 @@ var os = require('os');
 
 var loopSleepSeconds = config.loopSleepSeconds;
 var unhealthySeconds = config.unhealthySeconds;
+var mongoSSLEnabled = config.mongoSSLEnabled;
+var mongoSSLValidate = config.mongoSSLValidate;
 
 var hostIp = false;
 var hostIpAndPort = false;
+var mongoOptions = {};
 
 var init = function(done) {
   //Borrowed from here: http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
@@ -24,6 +27,13 @@ var init = function(done) {
     hostIp = addr;
     hostIpAndPort = hostIp + ':' + config.mongoPort;
 
+    if (config.mongoSSLEnabled) {
+      mongoOptions = {
+        ssl: true,
+        sslValidate: mongoSSLValidate
+      }
+    }
+
     done();
   });
 };
@@ -34,7 +44,10 @@ var workloop = function workloop() {
   }
 
   //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
-  async.series([ k8s.getMongoPods, mongo.getDb ], function(err, results) {
+  async.series([
+    k8s.getMongoPods,
+    mongo.getDb.bind(null, mongoOptions)
+  ], function(err, results) {
     var db = null;
     if (err) {
       if (Array.isArray(results) && results.length === 2) {

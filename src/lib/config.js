@@ -101,6 +101,8 @@ module.exports = {
   database: process.env.MONGODB_DATABASE || 'local',
   loopSleepSeconds: process.env.MONGO_SIDECAR_SLEEP_SECONDS || 5,
   unhealthySeconds: process.env.MONGO_SIDECAR_UNHEALTHY_SECONDS || 15,
+  mongoSSLEnabled: ( process.env.MONGO_SSL_ENABLED === 'true' ),
+  mongoSSLValidate: ( process.env.MONGO_SSL_VALIDATE === 'true' ),
   env: process.env.NODE_ENV || 'local',
   mongoPodLabels: getMongoPodLabels(),
   mongoPodLabelCollection: getMongoPodLabelCollection(),
