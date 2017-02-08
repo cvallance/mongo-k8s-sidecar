@@ -9,8 +9,10 @@ var os = require('os');
 
 var loopSleepSeconds = config.loopSleepSeconds;
 var unhealthySeconds = config.unhealthySeconds;
+
 var mongoSSLEnabled = config.mongoSSLEnabled;
-var mongoSSLValidate = config.mongoSSLValidate;
+var mongoSSLAllowInvalidCertificates = config.mongoSSLAllowInvalidCertificates;
+var mongoSSLAllowInvalidHostnames = config.mongoSSLAllowInvalidHostnames;
 
 var hostIp = false;
 var hostIpAndPort = false;
@@ -30,8 +32,9 @@ var init = function(done) {
 
     if (mongoSSLEnabled) {
       mongoOptions = {
-        ssl: true,
-        sslValidate: mongoSSLValidate
+        ssl: mongoSSLEnabled,
+        sslAllowInvalidCertificates: mongoSSLAllowInvalidCertificates,
+        sslAllowInvalidHostnames: mongoSSLAllowInvalidHostnames
       }
     }
 
@@ -48,10 +51,14 @@ var workloop = function workloop() {
 
   console.log('Initializing node with hostname %s', hostName);
 
+  var options = {
+    mongoOptions: mongoOptions
+  }
+
   //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
   async.series([
     k8s.getMongoPods,
-    mongo.getDb.bind(null, hostName, mongoOptions)
+    mongo.getDb.bind(null, options)
   ], function(err, results) {
     var db = null;
     if (err) {
@@ -176,8 +183,13 @@ var memberShouldBeRemoved = function(member) {
 
 var notInReplicaSet = function(db, pods, done) {
   var createTestRequest = function(pod) {
+    var opts = {
+      host: pod.status.podIP,
+      mongoOptions: mongoOptions
+    }
+
     return function(completed) {
-      mongo.isInReplSet(pod.status.podIP, completed);
+      mongo.isInReplSet(opts, completed);
     };
   };
 

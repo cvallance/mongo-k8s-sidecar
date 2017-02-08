@@ -5,27 +5,24 @@ var config = require('./config');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
-var getDb = function(host, options, done) {
+var getDb = function(options, done) {
   //If they called without host like getDb(function(err, db) { ... });
-  console.log('Getting DB with host %s', host);
-  console.log('Mongo Options are %j', options);
+  console.log('Options are %j', options);
 
-  if (arguments.length <= 2) {
+  if (arguments.length === 1) {
     if (typeof arguments[0] === 'function') {
       done = arguments[0];
       options = {};
-    } else if (typeof arguments[1] === 'function') {
-      done = arguments[1];
-      options = arguments[0];;
-      host = null;
-    }
-    else {
-      throw new Error('getDb illegal invocation. User either getDb(\'hostAddr\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
+    } else {
+      throw new Error('getDb illegal invocation. User either getDb(\'options\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
     }
   }
 
-  host = host || localhost;
-  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort));
+  host = options.host || localhost;
+
+  var mongoOptions = options.mongoOptions;
+  var mongoDb = new Db('local', new MongoServer(host, 27017, mongoOptions));
+
   mongoDb.open(function (err, db) {
     if (err) {
       return done(err);
@@ -161,8 +158,8 @@ var removeDeadMembers = function(rsConfig, addrsToRemove) {
   }
 };
 
-var isInReplSet = function(ip, done) {
-  getDb(ip, function(err, db) {
+var isInReplSet = function(options, done) {
+  getDb(options, function(err, db) {
     if (err) {
       return done(err);
     }
@@ -177,6 +174,12 @@ var isInReplSet = function(ip, done) {
       }
     });
   });
+};
+
+// This method will generate a self signed certificate in the format of a PEM file
+// using the addr as the FQDN and the certInfo as the information passed to the certificate
+var generateCertificate = function(addr, certInfo) {
+
 };
 
 module.exports = {
