@@ -7,15 +7,17 @@ var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
 var getDb = function(host, options, done) {
   //If they called without host like getDb(function(err, db) { ... });
+  console.log('Getting DB with host %s', host);
+  console.log('Mongo Options are %j', options);
+
   if (arguments.length <= 2) {
     if (typeof arguments[0] === 'function') {
       done = arguments[0];
-      host = localhost;
       options = {};
     } else if (typeof arguments[1] === 'function') {
       done = arguments[1];
-      host = artuments[0];
-      options = {};
+      options = arguments[0];;
+      host = null;
     }
     else {
       throw new Error('getDb illegal invocation. User either getDb(\'hostAddr\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
