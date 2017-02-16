@@ -8,6 +8,7 @@ var readToken = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/t
 
 var client = new Client({
   host: config.kubernetesROServiceAddress,
+  namespace: config.namespace, 
   protocol: 'https',
   version: 'v1',
   token: readToken
