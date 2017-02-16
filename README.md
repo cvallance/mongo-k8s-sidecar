@@ -15,8 +15,8 @@ There you will also find some helper scripts to test out creating the replica se
 
 ### Settings
 
-- KUBE_NAMESPACE
-  Required: NO
+- KUBE_NAMESPACE  
+  Required: NO  
   The namespace to look up pods in. Not setting it will search for pods in all namespaces.
 - MONGO_SIDECAR_POD_LABELS  
   Required: YES  
