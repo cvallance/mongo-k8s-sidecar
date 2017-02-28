@@ -22,7 +22,7 @@ var init = function(done) {
     }
 
     hostIp = addr;
-    hostIpAndPort = hostIp + ':27017'
+    hostIpAndPort = hostIp + ':27017';
 
     done();
   });
@@ -33,13 +33,18 @@ var workloop = function workloop() {
     throw new Error('Must initialize with the host machine\'s addr');
   }
 
-  async.parallel([ mongo.getDb, k8s.getMongoPods ], function(err, results) {
+  //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
+  async.series([ k8s.getMongoPods, mongo.getDb ], function(err, results) {
+    var db = null;
     if (err) {
-      return finish(err);
+      if (Array.isArray(results) && results.length === 2) {
+        db = results[1];
+      }
+      return finish(err, db);
     }
 
-    var db = results[0];
-    var pods = results[1];
+    var pods = results[0];
+    db = results[1];
 
     //Lets remove any pods that aren't running
     for (var i = pods.length - 1; i >= 0; i--) {
@@ -86,7 +91,7 @@ var finish = function(err, db) {
     console.error('Error in workloop', err);
   }
 
-  if (db) {
+  if (db && db.close) {
     db.close();
   }
 
@@ -194,12 +199,12 @@ var invalidReplicaSet = function(db, pods, done) {
   // The replica set config has become invalid, probably due to catastrophic errors like all nodes going down
   // this will force re-initialize the replica set on this node. There is a small chance for data loss here
   // because it is forcing a reconfigure, but chances are recovering from the invalid state is more important
-  console.log("Invalid set, re-initializing")
+  console.log("Invalid set, re-initializing");
   var addrToAdd = addrToAddLoop(pods, []);
   mongo.addNewReplSetMembers(db, addrToAdd, [], true, function(err) {
     done(err, db);
   });
-}
+};
 
 var podElection = function(pods) {
   //Because all the pods are going to be running this code independently, we need a way to consistently find the same
@@ -240,7 +245,7 @@ var addrToAddLoop = function(pods, members) {
     }
   }
   return addrToAdd;
-}
+};
 
 module.exports = {
   init: init,
