@@ -257,7 +257,7 @@ var addrToAddLoop = function(pods, members) {
 };
 
 /**
- * @param pod the Kubernetes pod, containing the info.
+ * @param pod this is the Kubernetes pod, containing the info.
  * @returns podIp the pod's IP address with the default port of 27017 attached at the end. Example WWW.XXX.YYY.ZZZ:27017. It returns undefined,
  * if the data is insufficient to retrieve the IP address.
  */
