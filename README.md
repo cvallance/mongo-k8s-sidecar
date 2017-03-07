@@ -56,23 +56,23 @@ If you want to use the StatefulSets' stable network IDs, you have to make sure t
 environmental variable. Then the MongoDB replica set node names could look like this:
 ```
 [ { _id: 1,
-   name: 'mongo-prod-0.mongodb.mongo.svc.cluster.local:27017',
+   name: 'mongo-prod-0.mongodb.db-namespace.svc.cluster.local:27017',
    stateStr: 'PRIMARY',
    ...},
  { _id: 2,
-   name: 'mongo-prod-1.mongodb.mongo.svc.cluster.local:27017',
+   name: 'mongo-prod-1.mongodb.db-namespace.svc.cluster.local:27017',
    stateStr: 'SECONDARY',
    ...},
  { _id: 2,
-   name: 'mongo-prod-2.mongodb.mongo.svc.cluster.local:27017',
+   name: 'mongo-prod-2.mongodb.db-namespace.svc.cluster.local:27017',
    stateStr: 'SECONDARY',
    ...} ]
 ```
 StatefulSet name: `mongo-prod`.  
 Headless service name: `mongodb`.  
-Namespace: `mongo`.
+Namespace: `db-namespace`.
 
-Read more about the stable network ids 
+Read more about the stable network IDs
 <a href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/#stable-network-id">here</a>.
 
 An example for a stable network pod ID looks like this:
@@ -91,7 +91,7 @@ Finally if you have a preconfigured replica set you have to make sure that:
 Example of acceptable names:
 ```
 10.48.0.72:27017
-mongo-prod-0.mongodb.mongo.svc.cluster.local:27017
+mongo-prod-0.mongodb.db-namespace.svc.cluster.local:27017
 ```
 Example of not-acceptable names:
 ```
