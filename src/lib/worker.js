@@ -187,7 +187,11 @@ var notInReplicaSet = function(db, pods, done) {
 
     if (podElection(pods)) {
       console.log('Pod has been elected for replica set initialization');
-      mongo.initReplSet(db, hostIpAndPort, done);
+      var primary = pods[0]; // After the sort election, the 0-th pod should be the primary.
+      var primaryStableNetworkAddressAndPort = getPodStableNetworkAddressAndPort(primary);
+      // Prefer the stable network ID over the pod IP, if present.
+      var primaryAddressAndPort = primaryStableNetworkAddressAndPort ? primaryStableNetworkAddressAndPort : hostIpAndPort;
+      mongo.initReplSet(db, primaryAddressAndPort, done);
       return;
     }
 
@@ -229,22 +233,55 @@ var addrToAddLoop = function(pods, members) {
       continue;
     }
 
-    var podIp = pod.status.podIP;
-    var podAddr = podIp  + ':27017';
+    var podIpAddr = getPodIpAddressAndPort(pod);
+    var podStableNetworkAdd = getPodStableNetworkAddressAndPort(pod);
     var podInRs = false;
+
     for (var j in members) {
       var member = members[j];
-      if (member.name === podAddr) {
+      if ((podIpAddr && member.name === podIpAddr) || (podStableNetworkAdd && member.name === podStableNetworkAdd)) {
+        /* If we have the pod's ip or the stable network address already in the config, no need to read it. Checks both the pod IP and the
+        * stable network ID - we don't want any duplicates - either one of the two is sufficient to consider the node present. */
         podInRs = true;
         continue;
       }
     }
 
     if (!podInRs) {
-      addrToAdd.push(podAddr);
+      // If the node was not present, we prefer the stable network ID, if present.
+      var addrToUse = podStableNetworkAdd ? podStableNetworkAdd : podIpAddr;
+      addrToAdd.push(addrToUse);
     }
   }
   return addrToAdd;
+};
+
+/**
+ * @param pod the Kubernetes pod, containing the info.
+ * @returns podIp the pod's IP address with the default port of 27017 attached at the end. Example WWW.XXX.YYY.ZZZ:27017. It returns undefined,
+ * if the data is insufficient to retrieve the IP address.
+ */
+var getPodIpAddressAndPort = function(pod) {
+  var podIpAddress = undefined;
+  if (pod && pod.status && pod.status.podIP) {
+    podIpAddress = pod.status.podIP + ":27017";
+  }
+  return podIpAddress;
+};
+
+/**
+ * Gets the pod's address. It can be either in the form of '<pod-name>.<mongo-kubernetes-service>.<pod-namespace>.svc.cluster.local:27017'.
+ * See: <a href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/#stable-network-id">Stateful Set documentation</a>
+ * for more details. If those are not set, then simply the pod's IP is returned.
+ * @param pod the Kubernetes pod, containing the information from the k8s client.
+ * @returns stableNetworkAddress the k8s MongoDB stable network address, or undefined.
+ */
+var getPodStableNetworkAddressAndPort = function(pod) {
+  var podStableNetworkAddress = undefined;
+  if (config.k8sMongoServiceName && pod && pod.metadata && pod.metadata.name && pod.metadata.namespace) {
+    podStableNetworkAddress =  pod.metadata.name + "." + config.k8sMongoServiceName + "." + pod.metadata.namespace + ".svc.cluster.local:27017";
+  }
+  return podStableNetworkAddress;
 };
 
 module.exports = {
