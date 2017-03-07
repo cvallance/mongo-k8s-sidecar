@@ -51,42 +51,55 @@ In its default configuration the sidecar uses the pods' IPs for MongodDB replica
    stateStr: 'SECONDARY',
    ...} ]
 ```
-`Note` that if you have already configured replica set, having different names (than the pod IPs) could lead to duplicates
-for the same pod. This is not good, since Mongo cannot deal well with duplicates and may break the whole replica set and
-leave it in a non-working state! Before moving to the sidecar, make sure you use the IPs for names of the pods. Always make
-sure to test it before applying it on production.
 
 If you want to use the StatefulSets' stable network IDs, you have to make sure that you use the `KUBERNETES_MONGO_SERVICE_NAME`
 environmental variable. Then the MongoDB replica set node names could look like this:
 ```
 [ { _id: 1,
-   name: 'mongo-prod-0.mongodb.mongon.svc.cluster.local:27017',
+   name: 'mongo-prod-0.mongodb.mongo.svc.cluster.local:27017',
    stateStr: 'PRIMARY',
    ...},
  { _id: 2,
-   name: 'mongo-prod-1.mongodb.mongon.svc.cluster.local:27017',
+   name: 'mongo-prod-1.mongodb.mongo.svc.cluster.local:27017',
    stateStr: 'SECONDARY',
    ...},
  { _id: 2,
-   name: 'mongo-prod-2.mongodb.mongon.svc.cluster.local:27017',
+   name: 'mongo-prod-2.mongodb.mongo.svc.cluster.local:27017',
    stateStr: 'SECONDARY',
    ...} ]
 ```
 StatefulSet name: `mongo-prod`.  
 Headless service name: `mongodb`.  
-Namespace: `mongons`.
+Namespace: `mongo`.
 
 Read more about the stable network ids 
 <a href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/#stable-network-id">here</a>.
 
-An example of the DNS name of a pod, using those stable network IDs looks like this:
+An example for a stable network pod ID looks like this:
 `$(statefulset name)-$(ordinal).$(service name).$(namespace).svc.cluster.local`.
-The stateful set name + the ordinal form the pod name, the service name is passed via `KUBERNETES_MONGO_SERVICE_NAME`,
+The `statefulset name` + the `ordinal` form the pod name, the `service name` is passed via `KUBERNETES_MONGO_SERVICE_NAME`,
 the namespace is extracted from the pod metadata and the rest is static.
 
-Another thing to consider when running a cluster with the mongo-k8s-sidecar, it will prefer the stateful set stable
+A thing to consider when running a cluster with the mongo-k8s-sidecar, it will prefer the stateful set stable
 network ID over the pod IP. Also if you have pods already having the IP as identifier, it should not add an additional
 entry for it, using the stable network ID, it should only add it for new entries in the cluster.
+
+Finally if you have a preconfigured replica set you have to make sure that:
+- the names of the mongo nodes are their IPs
+- the names of the mongo nodes are their stable network IDs (for more info see the link above)
+
+Example of acceptable names:
+```
+10.48.0.72:27017
+mongo-prod-0.mongodb.mongo.svc.cluster.local:27017
+```
+Example of not-acceptable names:
+```
+mongodb-service-0
+```
+
+If you run the sidecar alongside such a cluster, it may lead to a broken replica set, so make sure to test it well before
+going to production with it (which applies for all software).
 
 ## Debugging
 
