@@ -20,12 +20,12 @@ var getMongoPodLabelCollection = function() {
 };
 
 var getk8sROServiceAddress = function() {
-	return process.env.KUBERNETES_SERVICE_HOST + ":" + process.env.KUBERNETES_SERVICE_PORT
+  return process.env.KUBERNETES_SERVICE_HOST + ":" + process.env.KUBERNETES_SERVICE_PORT
 };
 
 /**
- * @returns k8sClusterDomain should the name of the kubernetes domain where the cluster is running. Can be convigured via the environmental
- * variable 'KUBERNETES_CLUSTER_DOMAIN'.
+ * @returns k8sClusterDomain should the name of the kubernetes domain where the cluster is running.
+ * Can be convigured via the environmental variable 'KUBERNETES_CLUSTER_DOMAIN'.
  */
 var getK8sClusterDomain = function() {
   var domain = process.env.KUBERNETES_CLUSTER_DOMAIN || "cluster.local";
@@ -33,19 +33,19 @@ var getK8sClusterDomain = function() {
   return domain;
 
   /**
-   * Calls a reverse DNS lookup to ensure that the given custom domain name matches the actual one. Raises a console warning if that is not
-   * the case.
+   * Calls a reverse DNS lookup to ensure that the given custom domain name matches the actual one.
+   * Raises a console warning if that is not the case.
    * @param clusterDomain the domain to verify.
    */
   function verifyCorrectnessOfDomain(clusterDomain) {
-	var dns = require('dns');
-    if(clusterDomain && (!dns.getServers() || dns.getServers().length > 0)) {
+    var dns = require('dns');
+    if(clusterDomain && dns.getServers() && dns.getServers().length > 0) {
       // In the case that we can resolve the DNS servers, we get the first and try to retrieve its host.
       dns.reverse(dns.getServers()[0], function(err, host) {
-        if(host.length < 1 || !host[0].endsWith(clusterDomain)) {
-          console.warn("Possibly wrong cluster domain name! Detected '" + clusterDomain + "' but expected similar to: ", host)
+        if(err || host.length < 1 || !host[0].endsWith(clusterDomain)) {
+          console.warn("Possibly wrong cluster domain name! Detected '%s' but expected similar to: %s",  clusterDomain, host);
         } else {
-          console.info("The cluster domain '" + clusterDomain + "' was successfully verified.")
+          console.log("The cluster domain '%s' was successfully verified.", clusterDomain)
         }
       });
     }
@@ -56,7 +56,7 @@ var getK8sClusterDomain = function() {
  * @returns k8sMongoServiceName should be the name of the (headless) k8s service operating the mongo pods.
  */
 var getK8sMongoServiceName = function() {
-	return process.env.KUBERNETES_MONGO_SERVICE_NAME || false;
+  return process.env.KUBERNETES_MONGO_SERVICE_NAME || false;
 };
 
 /**
@@ -64,7 +64,7 @@ var getK8sMongoServiceName = function() {
  */
 var getMongoDbPort = function() {
   var mongoPort = process.env.MONGO_PORT || 27017;
-  console.info("Using mongo port: ", mongoPort);
+  console.log("Using mongo port: %s", mongoPort);
   return mongoPort;
 };
 

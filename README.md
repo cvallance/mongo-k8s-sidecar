@@ -32,18 +32,18 @@ There you will also find some helper scripts to test out creating the replica se
 - MONGO_PORT
   Required: NO
   Default: 27017
-  Configures the mongo port, allows the usage non-standard ports.
+  Configures the mongo port, allows the usage of non-standard ports.  
 - KUBERNETES_MONGO_SERVICE_NAME  
   Required: NO  
-  This should point to the MongoDB Kubernetes service that identifies all the pods. It is used for setting up the DNS
-  configuration when applying this to stateful sets.  
+  This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the
+  DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID.  
 - KUBERNETES_CLUSTER_DOMAIN  
   Required: NO  
   Default: cluster.local  
-  This allows the specification of custom cluster domains. Used for the stable network ID of the k8s Mongo pods. Example for
-  a different domain name could be: "kube.local".   
+  This allows the specification of a custom cluster domain name. Used for the creation of a stable network ID of the k8s Mongo
+  pods. An example could be: "kube.local".  
 
-In its default configuration the sidecar uses the pods' IPs for MongodDB replica names. An example follows:
+In its default configuration the sidecar uses the pods' IPs for the MongodDB replica names. Here is a trimmed example:
 ```
 [ { _id: 1,
    name: '10.48.0.70:27017',
@@ -59,8 +59,8 @@ In its default configuration the sidecar uses the pods' IPs for MongodDB replica
    ...} ]
 ```
 
-If you want to use the StatefulSets' stable network IDs, you have to make sure that you use the `KUBERNETES_MONGO_SERVICE_NAME`
-environmental variable. Then the MongoDB replica set node names could look like this:
+If you want to use the StatefulSets' stable network ID, you have to make sure that you have the `KUBERNETES_MONGO_SERVICE_NAME`
+environmental variable set. Then the MongoDB replica set node names could look like this:
 ```
 [ { _id: 1,
    name: 'mongo-prod-0.mongodb.db-namespace.svc.cluster.local:27017',
@@ -70,7 +70,7 @@ environmental variable. Then the MongoDB replica set node names could look like 
    name: 'mongo-prod-1.mongodb.db-namespace.svc.cluster.local:27017',
    stateStr: 'SECONDARY',
    ...},
- { _id: 2,
+ { _id: 3,
    name: 'mongo-prod-2.mongodb.db-namespace.svc.cluster.local:27017',
    stateStr: 'SECONDARY',
    ...} ]
@@ -87,22 +87,24 @@ An example for a stable network pod ID looks like this:
 The `statefulset name` + the `ordinal` form the pod name, the `service name` is passed via `KUBERNETES_MONGO_SERVICE_NAME`,
 the namespace is extracted from the pod metadata and the rest is static.
 
-A thing to consider when running a cluster with the mongo-k8s-sidecar, it will prefer the stateful set stable
-network ID over the pod IP. Also if you have pods already having the IP as identifier, it should not add an additional
-entry for it, using the stable network ID, it should only add it for new entries in the cluster.
+A thing to consider when running a cluster with the mongo-k8s-sidecar is that it will prefer the stateful set stable
+network ID to the pod IP. It is however compatible with replica sets, configured with the pod IP as identifier - the sidecar
+should not add an additional entry for it, nor alter the existing entries. The mongo-k8s-sidecar should only use the stable
+network ID for new entries in the cluster.
 
 Finally if you have a preconfigured replica set you have to make sure that:
 - the names of the mongo nodes are their IPs
 - the names of the mongo nodes are their stable network IDs (for more info see the link above)
 
-Example of acceptable names:
+Example of compatible mongo replica names:
 ```
-10.48.0.72:27017
-mongo-prod-0.mongodb.db-namespace.svc.cluster.local:27017
+10.48.0.72:27017 # Uses the default pod IP name
+mongo-prod-0.mongodb.db-namespace.svc.cluster.local:27017 # Uses the stable network ID
 ```
-Example of not-acceptable names:
+
+Example of not compatible mongo replica names:
 ```
-mongodb-service-0
+mongodb-service-0 # Uses some custom k8s service name. Risks being a duplicate entry for the same mongo.
 ```
 
 If you run the sidecar alongside such a cluster, it may lead to a broken replica set, so make sure to test it well before
