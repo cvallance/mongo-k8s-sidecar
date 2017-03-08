@@ -1,6 +1,7 @@
 var Db = require('mongodb').Db;
 var MongoServer = require('mongodb').Server;
 var async = require('async');
+var config = require('./config');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
@@ -17,7 +18,7 @@ var getDb = function(host, done) {
   }
 
   host = host || localhost;
-  var mongoDb = new Db('local', new MongoServer(host, 27017));
+  var mongoDb = new Db('local', new MongoServer(host, config.mongoPort));
   mongoDb.open(function (err, db) {
     if (err) {
       return done(err);

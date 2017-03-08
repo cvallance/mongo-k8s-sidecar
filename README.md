@@ -29,12 +29,19 @@ There you will also find some helper scripts to test out creating the replica se
   Required: NO  
   Default: 15  
   This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set.
+- MONGO_PORT
+  Required: NO
+  Default: 27017
+  Configures the mongo port, allows the usage non-standard ports.
 - KUBERNETES_MONGO_SERVICE_NAME  
   Required: NO  
   This should point to the MongoDB Kubernetes service that identifies all the pods. It is used for setting up the DNS
   configuration when applying this to stateful sets.  
-
-### Note about a preconfigured cluster.
+- KUBERNETES_CLUSTER_DOMAIN  
+  Required: NO  
+  Default: cluster.local  
+  This allows the specification of custom cluster domains. Used for the stable network ID of the k8s Mongo pods. Example for
+  a different could be: "kube.local".   
 
 In its default configuration the sidecar uses the pods' IPs for MongodDB replica names. An example follows:
 ```

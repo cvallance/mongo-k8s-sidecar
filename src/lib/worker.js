@@ -22,7 +22,7 @@ var init = function(done) {
     }
 
     hostIp = addr;
-    hostIpAndPort = hostIp + ':27017';
+    hostIpAndPort = hostIp + ':' + config.mongoPort;
 
     done();
   });
@@ -258,20 +258,21 @@ var addrToAddLoop = function(pods, members) {
 
 /**
  * @param pod this is the Kubernetes pod, containing the info.
- * @returns podIp the pod's IP address with the default port of 27017 attached at the end. Example WWW.XXX.YYY.ZZZ:27017. It returns undefined,
- * if the data is insufficient to retrieve the IP address.
+ * @returns podIp the pod's IP address with the default port of 27017 (retrieved from the config) attached at the end. Example
+ * WWW.XXX.YYY.ZZZ:27017. It returns undefined, if the data is insufficient to retrieve the IP address.
  */
 var getPodIpAddressAndPort = function(pod) {
   var podIpAddress = undefined;
   if (pod && pod.status && pod.status.podIP) {
-    podIpAddress = pod.status.podIP + ":27017";
+    podIpAddress = pod.status.podIP + ":" + config.mongoPort;
   }
   return podIpAddress;
 };
 
 /**
- * Gets the pod's address. It can be either in the form of '<pod-name>.<mongo-kubernetes-service>.<pod-namespace>.svc.cluster.local:27017'.
- * See: <a href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/#stable-network-id">Stateful Set documentation</a>
+ * Gets the pod's address. It can be either in the form of
+ * '<pod-name>.<mongo-kubernetes-service>.<pod-namespace>.svc.cluster.local:<mongo-port>'. See:
+ * <a href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/#stable-network-id">Stateful Set documentation</a>
  * for more details. If those are not set, then simply the pod's IP is returned.
  * @param pod the Kubernetes pod, containing the information from the k8s client.
  * @returns stableNetworkAddress the k8s MongoDB stable network address, or undefined.
@@ -279,7 +280,10 @@ var getPodIpAddressAndPort = function(pod) {
 var getPodStableNetworkAddressAndPort = function(pod) {
   var podStableNetworkAddress = undefined;
   if (config.k8sMongoServiceName && pod && pod.metadata && pod.metadata.name && pod.metadata.namespace) {
-    podStableNetworkAddress =  pod.metadata.name + "." + config.k8sMongoServiceName + "." + pod.metadata.namespace + ".svc.cluster.local:27017";
+    var clusterDomain = config.k8sClusterDomain;
+    var mongoPort = config.mongoPort;
+    podStableNetworkAddress = pod.metadata.name + "." + config.k8sMongoServiceName + "." + pod.metadata.namespace + ".svc." +
+      clusterDomain + ":" + mongoPort;
   }
   return podStableNetworkAddress;
 };
