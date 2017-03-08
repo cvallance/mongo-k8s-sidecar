@@ -41,7 +41,7 @@ There you will also find some helper scripts to test out creating the replica se
   Required: NO  
   Default: cluster.local  
   This allows the specification of custom cluster domains. Used for the stable network ID of the k8s Mongo pods. Example for
-  a different could be: "kube.local".   
+  a different domain name could be: "kube.local".   
 
 In its default configuration the sidecar uses the pods' IPs for MongodDB replica names. An example follows:
 ```
