@@ -7,8 +7,8 @@ fs = require('fs');
 var readToken = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token');
 
 var client = new Client({
-  host: config.kubernetesROServiceAddress,
-  namespace: config.namespace, 
+  host: config.k8sROServiceAddress,
+  namespace: config.namespace,
   protocol: 'https',
   version: 'v1',
   token: readToken
