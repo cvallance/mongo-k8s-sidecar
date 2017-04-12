@@ -81,6 +81,17 @@ var getMongoDbPort = function() {
   return mongoPort;
 };
 
+/**
+ *  @returns boolean to define the RS as a configsvr or not. Default is false
+ */
+var isConfigRS = function() {
+  var configsvr = process.env.CONFIG_SVR || false;
+  if (configsvr) {
+    console.log("ReplicaSet is configured as a configsvr");
+  }
+  return !!configsvr;
+};
+
 module.exports = {
   namespace: process.env.KUBE_NAMESPACE,
   loopSleepSeconds: process.env.MONGO_SIDECAR_SLEEP_SECONDS || 5,
@@ -91,5 +102,6 @@ module.exports = {
   k8sROServiceAddress: getk8sROServiceAddress(),
   k8sMongoServiceName: getK8sMongoServiceName(),
   k8sClusterDomain: getK8sClusterDomain(),
-  mongoPort: getMongoDbPort()
+  mongoPort: getMongoDbPort(),
+  isConfigRS: isConfigRS(),
 };
