@@ -51,6 +51,9 @@ var replSetGetStatus = function(db, done) {
 var initReplSet = function(db, hostIpAndPort, done) {
   console.log('initReplSet', hostIpAndPort);
 
+  var _defaultConf = {
+    configsvr: config.isConfigRS
+  };
   db.admin().command({ replSetInitiate: {} }, {}, function (err) {
     if (err) {
       return done(err);
@@ -62,6 +65,8 @@ var initReplSet = function(db, hostIpAndPort, done) {
         return done(err);
       }
 
+      console.log('initial config is', config);
+      config.configsvr = _defaultConf.configsvr;
       config.members[0].host = hostIpAndPort;
       async.retry({times: 20, interval: 500}, function(callback) {
         replSetReconfig(db, config, false, callback);
