@@ -2,13 +2,12 @@ var Db = require('mongodb').Db;
 var MongoServer = require('mongodb').Server;
 var async = require('async');
 var config = require('./config');
+var pem = require('pem');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
 var getDb = function(options, done) {
   //If they called without host like getDb(function(err, db) { ... });
-  console.log('Options are %j', options);
-
   if (arguments.length === 1) {
     if (typeof arguments[0] === 'function') {
       done = arguments[0];
@@ -19,9 +18,10 @@ var getDb = function(options, done) {
   }
 
   host = options.host || localhost;
+  port = options.port;
 
   var mongoOptions = options.mongoOptions;
-  var mongoDb = new Db('local', new MongoServer(host, 27017, mongoOptions));
+  var mongoDb = new Db('local', new MongoServer(host, port, mongoOptions));
 
   mongoDb.open(function (err, db) {
     if (err) {
@@ -178,8 +178,22 @@ var isInReplSet = function(options, done) {
 
 // This method will generate a self signed certificate in the format of a PEM file
 // using the addr as the FQDN and the certInfo as the information passed to the certificate
-var generateCertificate = function(addr, certInfo) {
+// (Currently unused)
+var generateCertificate = function(certInfo, done) {
+  pem.createCertificate({
+    days: certInfo.days,
+    selfSigned: certInfo.selfSigned,
+    commonName: addr
+  }, function(err, keys) {
+    if (err) {
+      return done(err);
+    }
+    var cert = keys.certificate;
+    var key = keys.serviceKey;
 
+
+    return done(null, cert, key)
+  });
 };
 
 module.exports = {

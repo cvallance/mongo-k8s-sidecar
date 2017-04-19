@@ -69,3 +69,16 @@ endif
 ifeq ($(ENV),AWS)
 	@echo 'AWS not supported yet'
 endif
+
+generate-certificate:
+	@echo 'Generating self signed certificate'
+	-openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
+	-openssl rsa -passin pass:x -in server.pass.key -out server.key
+	-rm server.pass.key
+	-openssl req -new -key server.key -out server.csr -sobj "/C=US/ST=Georgia/L=Atlanta/O=Self/OU=Ops/CN=localhost"
+	-openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+	-cat server.key server.crt > mongo-ssl
+	-rm server.key server.crt
+	# Will need to consider setting the correct namespace
+	-kubectl create secret generic mongo --from-file=./mongo-ssl
+	-rm mongo-ssl

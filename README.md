@@ -107,18 +107,25 @@ going to production with it (which applies for all software).
   Required: NO
   Default: 15
   This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set.
+- MONGO_LISTEN_PORT
+  Required: NO
+  Default: 27017
+  This is the port that mongod will listen on.
 
 ### SSL
 
 #### Options
 - MONGO_SSL_ENABLED
   Required: NO (Required to enable SSL)
+  Default: false
   This should be true or false
 - MONGO_SSL_ALLOW_INVALID_CERTIFICATES
   Required: NO
+  Default: true
   This should be true or false and should be set to true if you want to use self signed certificates
 - MONGO_SSL_ALLOW_INVALID_HOSTNAMES
   Required: NO
+  Default: true
   This should be true or false and should be set to true if your certificates FQDN's do not match the host name set in your replset
 
 #### MongoDB Command
@@ -156,10 +163,6 @@ Volume & Volume Mount
             - name: MONGO_SIDECAR_POD_LABELS
               value: "role=mongo,environment=prod"
             - name: MONGO_SSL_ENABLED
-              value: 'true'
-            - name: MONGO_SSL_ALLOW_INVALID_CERTIFICATES
-              value: 'true'
-            - name: MONGO_SSL_ALLOW_INVALID_HOSTNAMES
               value: 'true'
       volumes:
         - name: mongo-ssl

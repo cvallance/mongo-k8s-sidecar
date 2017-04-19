@@ -9,6 +9,7 @@ var os = require('os');
 
 var loopSleepSeconds = config.loopSleepSeconds;
 var unhealthySeconds = config.unhealthySeconds;
+var mongoListenPort = config.mongoListenPort;
 
 var mongoSSLEnabled = config.mongoSSLEnabled;
 var mongoSSLAllowInvalidCertificates = config.mongoSSLAllowInvalidCertificates;
@@ -52,6 +53,7 @@ var workloop = function workloop() {
   console.log('Initializing node with hostname %s', hostName);
 
   var options = {
+    port: mongoListenPort,
     mongoOptions: mongoOptions
   }
 
@@ -185,6 +187,7 @@ var notInReplicaSet = function(db, pods, done) {
   var createTestRequest = function(pod) {
     var opts = {
       host: pod.status.podIP,
+      port: mongoListenPort,
       mongoOptions: mongoOptions
     }
 
