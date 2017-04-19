@@ -51,25 +51,22 @@ var replSetGetStatus = function(db, done) {
 var initReplSet = function(db, hostIpAndPort, done) {
   console.log('initReplSet', hostIpAndPort);
 
-  var _defaultConf = {
-    configsvr: config.isConfigRS
-  };
   db.admin().command({ replSetInitiate: {} }, {}, function (err) {
     if (err) {
       return done(err);
     }
 
     //We need to hack in the fix where the host is set to the hostname which isn't reachable from other hosts
-    replSetGetConfig(db, function(err, config) {
+    replSetGetConfig(db, function(err, rsConfig) {
       if (err) {
         return done(err);
       }
 
-      console.log('initial config is', config);
-      config.configsvr = _defaultConf.configsvr;
-      config.members[0].host = hostIpAndPort;
+      console.log('initial rsConfig is', rsConfig);
+      rsConfig.configsvr = config.configsvr;
+      rsConfig.members[0].host = hostIpAndPort;
       async.retry({times: 20, interval: 500}, function(callback) {
-        replSetReconfig(db, config, false, callback);
+        replSetReconfig(db, rsConfig, false, callback);
       }, function(err, results) {
         if (err) {
           return done(err);
@@ -81,12 +78,12 @@ var initReplSet = function(db, hostIpAndPort, done) {
   });
 };
 
-var replSetReconfig = function(db, config, force, done) {
-  console.log('replSetReconfig', config);
+var replSetReconfig = function(db, rsConfig, force, done) {
+  console.log('replSetReconfig', rsConfig);
 
-  config.version++;
+  rsConfig.version++;
 
-  db.admin().command({ replSetReconfig: config, force: force }, {}, function (err) {
+  db.admin().command({ replSetReconfig: rsConfig, force: force }, {}, function (err) {
     if (err) {
       return done(err);
     }
@@ -96,28 +93,28 @@ var replSetReconfig = function(db, config, force, done) {
 };
 
 var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, done) {
-  replSetGetConfig(db, function(err, config) {
+  replSetGetConfig(db, function(err, rsConfig) {
     if (err) {
       return done(err);
     }
 
-    addNewMembers(config, addrToAdd);
+    addNewMembers(rsConfig, addrToAdd);
 
-    removeDeadMembers(config, addrToRemove);
+    removeDeadMembers(rsConfig, addrToRemove);
 
-    replSetReconfig(db, config, shouldForce, done);
+    replSetReconfig(db, rsConfig, shouldForce, done);
   });
 };
 
-var addNewMembers = function(config, addrsToAdd) {
+var addNewMembers = function(rsConfig, addrsToAdd) {
   if (!addrsToAdd || !addrsToAdd.length) return;
 
   //Follows what is basically in mongo's rs.add function
   var max = 0;
 
-  for (var j in config.members) {
-    if (config.members[j]._id > max) {
-      max = config.members[j]._id;
+  for (var j in rsConfig.members) {
+    if (rsConfig.members[j]._id > max) {
+      max = rsConfig.members[j]._id;
     }
   }
 
@@ -127,19 +124,19 @@ var addNewMembers = function(config, addrsToAdd) {
       host: addrsToAdd[i]
     };
 
-    config.members.push(cfg);
+    rsConfig.members.push(cfg);
   }
 };
 
-var removeDeadMembers = function(config, addrsToRemove) {
+var removeDeadMembers = function(rsConfig, addrsToRemove) {
   if (!addrsToRemove || !addrsToRemove.length) return;
 
   for (var i in addrsToRemove) {
     var addrToRemove = addrsToRemove[i];
-    for (var j in config.members) {
-      var member = config.members[j];
+    for (var j in rsConfig.members) {
+      var member = rsConfig.members[j];
       if (member.host === addrToRemove) {
-        config.members.splice(j, 1);
+        rsConfig.members.splice(j, 1);
         break;
       }
     }
@@ -152,9 +149,9 @@ var isInReplSet = function(ip, done) {
       return done(err);
     }
 
-    replSetGetConfig(db, function(err, config) {
+    replSetGetConfig(db, function(err, rsConfig) {
       db.close();
-      if (!err && config) {
+      if (!err && rsConfig) {
         done(null, true);
       }
       else {
