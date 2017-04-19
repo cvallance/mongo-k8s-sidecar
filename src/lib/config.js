@@ -85,7 +85,7 @@ var getMongoDbPort = function() {
  *  @returns boolean to define the RS as a configsvr or not. Default is false
  */
 var isConfigRS = function() {
-  var configsvr = process.env.CONFIG_SVR || false;
+  var configsvr = /^(?:y|yes|true|1)$/i.test((process.env.CONFIG_SVR || '').trim());
   if (configsvr) {
     console.log("ReplicaSet is configured as a configsvr");
   }
