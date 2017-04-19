@@ -63,7 +63,7 @@ var initReplSet = function(db, hostIpAndPort, done) {
       }
 
       console.log('initial rsConfig is', rsConfig);
-      rsConfig.configsvr = config.configsvr;
+      rsConfig.configsvr = config.isConfigRS;
       rsConfig.members[0].host = hostIpAndPort;
       async.retry({times: 20, interval: 500}, function(callback) {
         replSetReconfig(db, rsConfig, false, callback);
