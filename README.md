@@ -33,6 +33,10 @@ There you will also find some helper scripts to test out creating the replica se
   Required: NO
   Default: 27017
   Configures the mongo port, allows the usage of non-standard ports.  
+- CONFIG_SVR
+  Required: NO
+  Default: false
+  Configures the [configsvr](https://docs.mongodb.com/manual/reference/replica-configuration/#rsconf.configsvr) variable when initializing the replicaset.
 - KUBERNETES_MONGO_SERVICE_NAME  
   Required: NO  
   This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the
