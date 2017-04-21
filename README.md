@@ -141,14 +141,12 @@ Volume & Volume Mount
             secretName: mongo
 ```
 
-Creating Secret
-```
+#### Creating Secret for SSL
 Use the Makefile: `cd examples && make generate-certificate`
 
 or
 
 Generate them on your own and push the secrets `kube create secret generic mongo --from-file=./keys`
-```
 where `keys` is a directory containing your SSL pem file named `mongodb.pem`
 
 ## Debugging
