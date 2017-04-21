@@ -28,6 +28,9 @@ There you will also find some helper scripts to test out creating the replica se
 | MONGODB_USERNAME | NO | | Configures the mongo username for authentication |
 | MONGODB_PASSWORD | NO | | Configures the mongo password for authentication |
 | MONGODB_DATABASE | NO | local | Configures the mongo authentication database |
+| MONGO_SSL_ENABLED | NO | false | Enable SSL for MongoDB. |
+| MONGO_SSL_ALLOW_INVALID_CERTIFICATES | NO | true | This should be set to true if you want to use self signed certificates. |
+| MONGO_SSL_ALLOW_INVALID_HOSTNAMES | NO | true | This should be set to true if your certificates FQDN's do not match the host name set in your replset. |
 
 In its default configuration the sidecar uses the pods' IPs for the MongodDB replica names. Here is a trimmed example:
 ```
@@ -95,38 +98,6 @@ mongodb-service-0 # Uses some custom k8s service name. Risks being a duplicate e
 
 If you run the sidecar alongside such a cluster, it may lead to a broken replica set, so make sure to test it well before
 going to production with it (which applies for all software).
-=======
-- MONGO_SIDECAR_POD_LABELS
-  Required: YES
-  This should be a be a comma separated list of key values the same as the podTemplate labels. See above for example.
-- MONGO_SIDECAR_SLEEP_SECONDS
-  Required: NO
-  Default: 5
-  This is how long to sleep between work cycles.
-- MONGO_SIDECAR_UNHEALTHY_SECONDS
-  Required: NO
-  Default: 15
-  This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set.
-- MONGO_LISTEN_PORT
-  Required: NO
-  Default: 27017
-  This is the port that mongod will listen on.
-
-### SSL
-
-#### Options
-- MONGO_SSL_ENABLED
-  Required: NO (Required to enable SSL)
-  Default: false
-  This should be true or false
-- MONGO_SSL_ALLOW_INVALID_CERTIFICATES
-  Required: NO
-  Default: true
-  This should be true or false and should be set to true if you want to use self signed certificates
-- MONGO_SSL_ALLOW_INVALID_HOSTNAMES
-  Required: NO
-  Default: true
-  This should be true or false and should be set to true if your certificates FQDN's do not match the host name set in your replset
 
 #### MongoDB Command
 The following is an example of how you would update the mongo command enabling ssl and using a certificate obtained from a secret and mounted at /data/ssl/mongodb.pem
@@ -172,7 +143,11 @@ Volume & Volume Mount
 
 Creating Secret
 ```
-kube create secret generic mongo --from-file=./keys
+Use the Makefile: `cd examples && make generate-certificate`
+
+or
+
+Generate them on your own and push the secrets `kube create secret generic mongo --from-file=./keys`
 ```
 where `keys` is a directory containing your SSL pem file named `mongodb.pem`
 
