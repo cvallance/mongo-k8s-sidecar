@@ -94,6 +94,15 @@ var isConfigRS = function() {
   return configSvrBool;
 };
 
+/**
+ * @returns boolean
+ */
+var stringToBool = function(boolStr) {
+  var isTrue = ( boolStr === 'true' ) || false;
+
+  return isTrue;
+};
+
 module.exports = {
   namespace: process.env.KUBE_NAMESPACE,
   username: process.env.MONGODB_USERNAME,
@@ -102,9 +111,9 @@ module.exports = {
   loopSleepSeconds: process.env.MONGO_SIDECAR_SLEEP_SECONDS || 5,
   unhealthySeconds: process.env.MONGO_SIDECAR_UNHEALTHY_SECONDS || 15,
   mongoListenPort: process.env.MONGO_LISTEN_PORT || 27017,
-  mongoSSLEnabled: ( process.env.MONGO_SSL_ENABLED === 'true' ) || false,
-  mongoSSLAllowInvalidCertificates: ( process.env.MONGO_SSL_ALLOW_INVALID_CERTIFICATES === 'true' ) || true,
-  mongoSSLAllowInvalidHostnames: ( process.env.MONGO_SSL_ALLOW_INVALID_HOSTNAMES === 'true' ) || true,
+  mongoSSLEnabled: stringToBool(process.env.MONGO_SSL_ENABLED),
+  mongoSSLAllowInvalidCertificates: stringToBool(process.env.MONGO_SSL_ALLOW_INVALID_CERTIFICATES),
+  mongoSSLAllowInvalidHostnames: stringToBool(process.env.MONGO_SSL_ALLOW_INVALID_HOSTNAMES),
   env: process.env.NODE_ENV || 'local',
   mongoPodLabels: getMongoPodLabels(),
   mongoPodLabelCollection: getMongoPodLabelCollection(),
