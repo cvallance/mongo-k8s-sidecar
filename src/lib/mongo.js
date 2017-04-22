@@ -18,8 +18,7 @@ var getDb = function(host, done) {
   }
 
   host = host || localhost;
-  var database = config.databse || "admin"
-  var mongoDb = new Db(database, new MongoServer(host, config.mongoPort));
+  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort));
   mongoDb.open(function (err, db) {
     if (err) {
       return done(err);
