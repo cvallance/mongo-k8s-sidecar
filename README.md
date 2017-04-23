@@ -25,6 +25,9 @@ There you will also find some helper scripts to test out creating the replica se
 | CONFIG_SVR | NO | false | Configures the [configsvr](https://docs.mongodb.com/manual/reference/replica-configuration/#rsconf.configsvr) variable when initializing the replicaset. |
 | KUBERNETES_MONGO_SERVICE_NAME | NO |  | This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID. |
 | KUBERNETES_CLUSTER_DOMAIN | NO | cluster.local | This allows the specification of a custom cluster domain name. Used for the creation of a stable network ID of the k8s Mongo   pods. An example could be: "kube.local". |
+| MONGODB_USERNAME | NO | | Configures the mongo username for authentication |
+| MONGODB_PASSWORD | NO | | Configures the mongo password for authentication |
+| MONGODB_DATABASE | NO | local | Configures the mongo authentication database |
 
 In its default configuration the sidecar uses the pods' IPs for the MongodDB replica names. Here is a trimmed example:
 ```

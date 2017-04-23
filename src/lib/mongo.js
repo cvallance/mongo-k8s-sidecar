@@ -18,13 +18,24 @@ var getDb = function(host, done) {
   }
 
   host = host || localhost;
-  var mongoDb = new Db('local', new MongoServer(host, config.mongoPort));
+  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort));
   mongoDb.open(function (err, db) {
     if (err) {
       return done(err);
     }
 
-    return done(null, db);
+    if(config.username) {
+        mongoDb.authenticate(config.username, config.password, function(err, result) {
+            if (err) {
+              return done(err);
+            }
+
+            return done(null, db);
+        });
+    } else {
+      return done(null, db);
+    }
+
   });
 };
 
