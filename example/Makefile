@@ -1,6 +1,8 @@
 NUM_REPLICAS=$(shell kubectl get rc -l role=mongo -o template --template='{{ len .items }}')
 NEW_REPLICA_NUM=$(shell expr $(NUM_REPLICAS) + 1 )
 CREATE_SERVICE=TRUE
+MONGO_SECRET_NAME ?= "mongo-ssl"
+KUBECTL_NAMESPACE ?= "default"
 
 
 # ENV Options
@@ -75,10 +77,11 @@ generate-certificate:
 	-openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
 	-openssl rsa -passin pass:x -in server.pass.key -out server.key
 	-rm server.pass.key
-	-openssl req -new -key server.key -out server.csr -sobj "/C=US/ST=Georgia/L=Atlanta/O=Self/OU=Ops/CN=localhost"
+	-openssl req -new -key server.key -out server.csr -subj "/C=US/ST=Georgia/L=Atlanta/O=Self/OU=Ops/CN=localhost"
 	-openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
-	-cat server.key server.crt > mongo-ssl
-	-rm server.key server.crt
+	-cat server.key server.crt > mongodb.pem
+	-rm server.key server.crt server.csr
 	# Will need to consider setting the correct namespace
-	-kubectl create secret generic mongo --from-file=./mongo-ssl
-	-rm mongo-ssl
+	-kubectl --namespace=$(KUBECTL_NAMESPACE) delete secret $(MONGO_SECRET_NAME)
+	-kubectl --namespace=$(KUBECTL_NAMESPACE) create secret generic $(MONGO_SECRET_NAME) --from-file=./mongodb.pem
+	-rm mongodb.pem

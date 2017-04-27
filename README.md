@@ -142,7 +142,18 @@ Volume & Volume Mount
 ```
 
 #### Creating Secret for SSL
-Use the Makefile: `cd examples && make generate-certificate`
+Use the Makefile:
+
+| Environment Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| MONGO_SECRET_NAME | NO | mongo-ssl | This is the name that the secret containing the SSL certificates will be created with. |
+| KUBECTL_NAMESPACE | NO | default | This is the namespace in which the secret containing the SSL certificates will be created. |
+
+```
+export MONGO_SECRET_NAME=mongo-ssl
+export KUBECTL_NAMESPACE=default
+cd examples && make generate-certificate
+```
 
 or
 
