@@ -109,9 +109,9 @@ var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, do
       return done(err);
     }
 
-    addNewMembers(rsConfig, addrToAdd);
-
     removeDeadMembers(rsConfig, addrToRemove);
+
+    addNewMembers(rsConfig, addrToAdd);
 
     replSetReconfig(db, rsConfig, shouldForce, done);
   });

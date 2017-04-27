@@ -69,7 +69,7 @@ var workloop = function workloop() {
           });
         }
         else if (err.code && err.code == 93) {
-          invalidReplicaSet(db, pods, function(err) {
+          invalidReplicaSet(db, pods, status, function(err) {
             finish(err, db);
           });
         }
@@ -130,15 +130,7 @@ var primaryWork = function(db, pods, members, shouldForce, done) {
   //Loop over all the pods we have and see if any of them aren't in the current rs members array
   //If they aren't in there, add them
   var addrToAdd = addrToAddLoop(pods, members);
-
-  //Separate loop for removing members
-  var addrToRemove = [];
-  for (var i  in members) {
-    var member = members[i];
-    if (memberShouldBeRemoved(member)) {
-      addrToRemove.push(member.name);
-    }
-  }
+  var addrToRemove = addrToRemoveLoop(members);
 
   if (addrToAdd.length || addrToRemove.length) {
     console.log('Addresses to add:    ', addrToAdd);
@@ -149,11 +141,6 @@ var primaryWork = function(db, pods, members, shouldForce, done) {
   }
 
   done();
-};
-
-var memberShouldBeRemoved = function(member) {
-  return !member.health
-    && moment().subtract(unhealthySeconds, 'seconds').isAfter(member.lastHeartbeatRecv);
 };
 
 var notInReplicaSet = function(db, pods, done) {
@@ -199,13 +186,20 @@ var notInReplicaSet = function(db, pods, done) {
   });
 };
 
-var invalidReplicaSet = function(db, pods, done) {
+var invalidReplicaSet = function(db, pods, status, done) {
   // The replica set config has become invalid, probably due to catastrophic errors like all nodes going down
   // this will force re-initialize the replica set on this node. There is a small chance for data loss here
   // because it is forcing a reconfigure, but chances are recovering from the invalid state is more important
+  var members = [];
+  if (status && status.members) {
+    members = status.members;
+  }
+
   console.log("Invalid set, re-initializing");
-  var addrToAdd = addrToAddLoop(pods, []);
-  mongo.addNewReplSetMembers(db, addrToAdd, [], true, function(err) {
+  var addrToAdd = addrToAddLoop(pods, members);
+  var addrToRemove = addrToRemoveLoop(members);
+
+  mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true, function(err) {
     done(err, db);
   });
 };
@@ -254,6 +248,22 @@ var addrToAddLoop = function(pods, members) {
     }
   }
   return addrToAdd;
+};
+
+var addrToRemoveLoop = function(members) {
+    var addrToRemove = [];
+    for (var i in members) {
+        var member = members[i];
+        if (memberShouldBeRemoved(member)) {
+            addrToRemove.push(member.name);
+        }
+    }
+    return addrToRemove;
+};
+
+var memberShouldBeRemoved = function(member) {
+    return !member.health
+        && moment().subtract(unhealthySeconds, 'seconds').isAfter(member.lastHeartbeatRecv);
 };
 
 /**
