@@ -6,22 +6,29 @@ var pem = require('pem');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
-var getDb = function(options, done) {
+var getDb = function(host, done) {
   //If they called without host like getDb(function(err, db) { ... });
   if (arguments.length === 1) {
     if (typeof arguments[0] === 'function') {
       done = arguments[0];
-      options = {};
+      host = localhost;
     } else {
       throw new Error('getDb illegal invocation. User either getDb(\'options\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
     }
   }
 
-  host = options.host || localhost;
-  port = options.port;
+  var mongoOptions = {};
+  host = host || localhost;
 
-  var mongoOptions = options.mongoOptions;
-  var mongoDb = new Db('local', new MongoServer(host, port, mongoOptions));
+  if (config.mongoSSLEnabled) {
+    mongoOptions = {
+      ssl: config.mongoSSLEnabled,
+      sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
+      sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
+    }
+  }
+
+  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
 
   mongoDb.open(function (err, db) {
     if (err) {
@@ -158,8 +165,8 @@ var removeDeadMembers = function(rsConfig, addrsToRemove) {
   }
 };
 
-var isInReplSet = function(options, done) {
-  getDb(options, function(err, db) {
+var isInReplSet = function(ip, done) {
+  getDb(ip, function(err, db) {
     if (err) {
       return done(err);
     }

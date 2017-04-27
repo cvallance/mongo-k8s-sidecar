@@ -9,16 +9,9 @@ var os = require('os');
 
 var loopSleepSeconds = config.loopSleepSeconds;
 var unhealthySeconds = config.unhealthySeconds;
-var mongoListenPort = config.mongoListenPort;
-
-var mongoSSLEnabled = config.mongoSSLEnabled;
-var mongoSSLAllowInvalidCertificates = config.mongoSSLAllowInvalidCertificates;
-var mongoSSLAllowInvalidHostnames = config.mongoSSLAllowInvalidHostnames;
 
 var hostIp = false;
 var hostIpAndPort = false;
-var mongoOptions = {};
-
 
 var init = function(done) {
   //Borrowed from here: http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
@@ -31,14 +24,6 @@ var init = function(done) {
     hostIp = addr;
     hostIpAndPort = hostIp + ':' + config.mongoPort;
 
-    if (mongoSSLEnabled) {
-      mongoOptions = {
-        ssl: mongoSSLEnabled,
-        sslAllowInvalidCertificates: mongoSSLAllowInvalidCertificates,
-        sslAllowInvalidHostnames: mongoSSLAllowInvalidHostnames
-      }
-    }
-
     done();
   });
 };
@@ -48,19 +33,10 @@ var workloop = function workloop() {
     throw new Error('Must initialize with the host machine\'s addr');
   }
 
-  var hostName = os.hostname();
-
-  console.log('Initializing node with hostname %s', hostName);
-
-  var options = {
-    port: mongoListenPort,
-    mongoOptions: mongoOptions
-  }
-
   //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
   async.series([
     k8s.getMongoPods,
-    mongo.getDb.bind(null, options)
+    mongo.getDb
   ], function(err, results) {
     var db = null;
     if (err) {
@@ -185,14 +161,8 @@ var memberShouldBeRemoved = function(member) {
 
 var notInReplicaSet = function(db, pods, done) {
   var createTestRequest = function(pod) {
-    var opts = {
-      host: pod.status.podIP,
-      port: mongoListenPort,
-      mongoOptions: mongoOptions
-    }
-
     return function(completed) {
-      mongo.isInReplSet(opts, completed);
+      mongo.isInReplSet(pod.status.podIP, completed);
     };
   };
 
