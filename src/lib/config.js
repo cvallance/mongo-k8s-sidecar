@@ -4,12 +4,23 @@ var getMongoPodLabels = function() {
   return process.env.MONGO_SIDECAR_POD_LABELS || false;
 };
 
+var getMongoPodLabelsArbiter = function() {
+  return process.env.MONGO_SIDECAR_POD_LABELS_ARBITER || false;
+};
+
 var getMongoPodLabelCollection = function() {
-  var podLabels = getMongoPodLabels();
-  if (!podLabels) {
+  return parseLabelCollection(getMongoPodLabels());
+};
+
+var getMongoPodLabelCollectionArbiter = function() {
+  return parseLabelCollection(getMongoPodLabelsArbiter());
+};
+
+var parseLabelCollection = function(labelString) {
+  if (!labelString) {
     return false;
   }
-  var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
+  var labels = labelString.split(',');
   for (var i in labels) {
     var keyAndValue = labels[i].split('=');
     labels[i] = {
@@ -103,6 +114,8 @@ module.exports = {
   unhealthySeconds: process.env.MONGO_SIDECAR_UNHEALTHY_SECONDS || 15,
   env: process.env.NODE_ENV || 'local',
   mongoPodLabels: getMongoPodLabels(),
+  mongoPodLabelsArbiter: getMongoPodLabelsArbiter(),
+  mongoPodLabelCollectionArbiter: getMongoPodLabelCollectionArbiter(),
   mongoPodLabelCollection: getMongoPodLabelCollection(),
   k8sROServiceAddress: getk8sROServiceAddress(),
   k8sMongoServiceName: getK8sMongoServiceName(),
