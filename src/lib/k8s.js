@@ -50,5 +50,6 @@ var podContainsLabels = function podContainsLabels(pod, labels) {
 };
 
 module.exports = {
-  getMongoPods: getMongoPods
+  getMongoPods: getMongoPods,
+  podContainsLabels: podContainsLabels
 };
