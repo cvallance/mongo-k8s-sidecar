@@ -2,7 +2,6 @@ var Db = require('mongodb').Db;
 var MongoServer = require('mongodb').Server;
 var async = require('async');
 var config = require('./config');
-var pem = require('pem');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
@@ -180,26 +179,6 @@ var isInReplSet = function(ip, done) {
         done(null, false);
       }
     });
-  });
-};
-
-// This method will generate a self signed certificate in the format of a PEM file
-// using the addr as the FQDN and the certInfo as the information passed to the certificate
-// (Currently unused)
-var generateCertificate = function(certInfo, done) {
-  pem.createCertificate({
-    days: certInfo.days,
-    selfSigned: certInfo.selfSigned,
-    commonName: addr
-  }, function(err, keys) {
-    if (err) {
-      return done(err);
-    }
-    var cert = keys.certificate;
-    var key = keys.serviceKey;
-
-
-    return done(null, cert, key)
   });
 };
 
