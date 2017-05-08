@@ -11,14 +11,24 @@ var getDb = function(host, done) {
     if (typeof arguments[0] === 'function') {
       done = arguments[0];
       host = localhost;
-    }
-    else {
-      throw new Error('getDb illegal invocation. User either getDb(\'hostAddr\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
+    } else {
+      throw new Error('getDb illegal invocation. User either getDb(\'options\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
     }
   }
 
+  var mongoOptions = {};
   host = host || localhost;
-  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort));
+
+  if (config.mongoSSLEnabled) {
+    mongoOptions = {
+      ssl: config.mongoSSLEnabled,
+      sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
+      sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
+    }
+  }
+
+  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
+
   mongoDb.open(function (err, db) {
     if (err) {
       return done(err);

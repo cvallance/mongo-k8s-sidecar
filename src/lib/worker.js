@@ -34,7 +34,10 @@ var workloop = function workloop() {
   }
 
   //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
-  async.series([ k8s.getMongoPods, mongo.getDb ], function(err, results) {
+  async.series([
+    k8s.getMongoPods,
+    mongo.getDb
+  ], function(err, results) {
     var db = null;
     if (err) {
       if (Array.isArray(results) && results.length === 2) {
