@@ -1,6 +1,7 @@
 var Client = require('node-kubernetes-client');
 var config = require('./config');
 var util = require("util");
+var dns = require("dns");
 
 fs = require('fs');
 
@@ -15,25 +16,44 @@ var client = new Client({
 });
 
 var getMongoPods = function getPods(done) {
-  client.pods.get(function (err, podResult) {
-    if (err) {
-      return done(err);
-    }
-    var pods = [];
-    for (var j in podResult) {
-      pods = pods.concat(podResult[j].items)
-    }
-    var labels = config.mongoPodLabelCollection;
-    var results = [];
-    for (var i in pods) {
-      var pod = pods[i];
-      if (podContainsLabels(pod, labels)) {
-        results.push(pod);
-      }
-    }
 
-    done(null, results);
-  });
+	if (config.isDiscoverByDNS){
+		var domain = config.k8sMongoServiceName +
+			"." + config.namespace +
+			".svc" +
+			"." +config.k8sClusterDomain;
+		dns.resolve4(domain, (err, addrs) => {
+			if (err) {
+				return done(err);
+			}
+			var pods = [];
+			for (var i in addrs){
+				var pod = {status:{podIP:addrs[i],phase:'Running'}, metadata: null}
+				pods.push(pod)
+			}
+			return done(null, pods);
+		});
+	}
+	else{
+		client.pods.get(function (err, podResult) {
+			if (err) {
+				return done(err);
+			}
+			var pods = [];
+			for (var j in podResult) {
+				pods = pods.concat(podResult[j].items)
+			}
+			var labels = config.mongoPodLabelCollection;
+			var results = [];
+			for (var i in pods) {
+				var pod = pods[i];
+				if (podContainsLabels(pod, labels)) {
+					results.push(pod);
+				}
+			}
+			done(null, results);
+		});
+	}
 };
 
 var podContainsLabels = function podContainsLabels(pod, labels) {

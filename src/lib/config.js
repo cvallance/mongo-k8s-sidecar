@@ -94,6 +94,10 @@ var isConfigRS = function() {
   return configSvrBool;
 };
 
+var isDiscoverByDNS = function(){
+  return process.env.MONGO_DISCOVERY_BY_DNS || true;
+}
+
 /**
  * @returns boolean
  */
@@ -121,4 +125,5 @@ module.exports = {
   k8sClusterDomain: getK8sClusterDomain(),
   mongoPort: getMongoDbPort(),
   isConfigRS: isConfigRS(),
+  isDiscoverByDNS: isDiscoverByDNS(),
 };
