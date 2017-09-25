@@ -29,6 +29,12 @@ Replace `googlecloud_ssd.yaml` with another configuration file if you are not us
 kubectl apply -f azure_ssd.yaml
 ```
 
+If you are using Minikube for local testing:
+
+```
+kubectl apply -f minikube_hostpath.yaml
+```
+
 
 Verify that the Storage Class is created
 
