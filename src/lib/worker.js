@@ -198,12 +198,18 @@ var invalidReplicaSet = function(db, pods, status, done) {
     members = status.members;
   }
 
-  console.log("Invalid set, re-initializing");
+  console.log("Invalid replica set");
+  if (!podElection(pods)) {
+    console.log("Didn't win the pod election, doing nothing");
+    return done();
+  }
+
+  console.log("Won the pod election, forcing re-initialization");
   var addrToAdd = addrToAddLoop(pods, members);
   var addrToRemove = addrToRemoveLoop(members);
 
   mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true, function(err) {
-    done(err, db);
+    done(err);
   });
 };
 
