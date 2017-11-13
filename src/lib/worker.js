@@ -39,15 +39,15 @@ var workloop = function workloop() {
     mongo.getDb
   ], function(err, results) {
     var db = null;
+    if (Array.isArray(results) && results.length === 2) {
+      db = results[1];
+    }
+
     if (err) {
-      if (Array.isArray(results) && results.length === 2) {
-        db = results[1];
-      }
       return finish(err, db);
     }
 
     var pods = results[0];
-    db = results[1];
 
     //Lets remove any pods that aren't running
     for (var i = pods.length - 1; i >= 0; i--) {
@@ -240,7 +240,7 @@ var addrToAddLoop = function(pods, members) {
         /* If we have the pod's ip or the stable network address already in the config, no need to read it. Checks both the pod IP and the
         * stable network ID - we don't want any duplicates - either one of the two is sufficient to consider the node present. */
         podInRs = true;
-        continue;
+        break;
       }
     }
 
