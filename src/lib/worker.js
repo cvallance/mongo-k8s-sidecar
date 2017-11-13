@@ -39,20 +39,20 @@ var workloop = function workloop() {
     mongo.getDb
   ], function(err, results) {
     var db = null;
+    if (Array.isArray(results) && results.length === 2) {
+      db = results[1];
+    }
+
     if (err) {
-      if (Array.isArray(results) && results.length === 2) {
-        db = results[1];
-      }
       return finish(err, db);
     }
 
     var pods = results[0];
-    db = results[1];
 
-    //Lets remove any pods that aren't running
+    //Lets remove any pods that aren't running or haven't been assigned an IP address yet
     for (var i = pods.length - 1; i >= 0; i--) {
       var pod = pods[i];
-      if (pod.status.phase !== 'Running') {
+      if (pod.status.phase !== 'Running' || !pod.status.podIP) {
         pods.splice(i, 1);
       }
     }
@@ -198,12 +198,18 @@ var invalidReplicaSet = function(db, pods, status, done) {
     members = status.members;
   }
 
-  console.log("Invalid set, re-initializing");
+  console.log("Invalid replica set");
+  if (!podElection(pods)) {
+    console.log("Didn't win the pod election, doing nothing");
+    return done();
+  }
+
+  console.log("Won the pod election, forcing re-initialization");
   var addrToAdd = addrToAddLoop(pods, members);
   var addrToRemove = addrToRemoveLoop(members);
 
   mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true, function(err) {
-    done(err, db);
+    done(err);
   });
 };
 
@@ -240,7 +246,7 @@ var addrToAddLoop = function(pods, members) {
         /* If we have the pod's ip or the stable network address already in the config, no need to read it. Checks both the pod IP and the
         * stable network ID - we don't want any duplicates - either one of the two is sufficient to consider the node present. */
         podInRs = true;
-        continue;
+        break;
       }
     }
 
