@@ -49,10 +49,10 @@ var workloop = function workloop() {
 
     var pods = results[0];
 
-    //Lets remove any pods that aren't running
+    //Lets remove any pods that aren't running or haven't been assigned an IP address yet
     for (var i = pods.length - 1; i >= 0; i--) {
       var pod = pods[i];
-      if (pod.status.phase !== 'Running') {
+      if (pod.status.phase !== 'Running' || !pod.status.podIP) {
         pods.splice(i, 1);
       }
     }
