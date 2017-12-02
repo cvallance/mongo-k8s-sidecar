@@ -1,13 +1,16 @@
 'use strict';
 
+const dns = require('dns');
+const os = require('os');
+
+const async = require('async');
+const moment = require('moment');
+const ip = require('ip');
+
 const mongo = require('./mongo');
 const k8s = require('./k8s');
 const config = require('./config');
-const ip = require('ip');
-const async = require('async');
-const moment = require('moment');
-const dns = require('dns');
-const os = require('os');
+
 
 const loopSleepSeconds = config.loopSleepSeconds;
 const unhealthySeconds = config.unhealthySeconds;

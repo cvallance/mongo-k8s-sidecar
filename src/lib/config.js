@@ -2,6 +2,7 @@
 
 const dns = require('dns');
 
+
 const getMongoPodLabels = () => process.env.MONGO_SIDECAR_POD_LABELS || false;
 
 const getMongoPodLabelCollection = () => {

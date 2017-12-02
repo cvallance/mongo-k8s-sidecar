@@ -1,9 +1,11 @@
 'use strict';
 
+const async = require('async');
 const Db = require('mongodb').Db;
 const MongoServer = require('mongodb').Server;
-const async = require('async');
+
 const config = require('./config');
+
 
 const localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 

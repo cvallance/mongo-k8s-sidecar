@@ -1,8 +1,11 @@
 'use strict';
 
-const Client = require('node-kubernetes-client');
-const config = require('./config');
 const fs = require('fs');
+
+const Client = require('node-kubernetes-client');
+
+const config = require('./config');
+
 
 const readToken = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token');
 
