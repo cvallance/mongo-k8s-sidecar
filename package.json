@@ -29,6 +29,7 @@
   "homepage": "https://github.com/cvallance/mongo-k8s-sidecar",
   "devDependencies": {
     "chai": "^2.3.0",
+    "eslint": "^4.12.1",
     "mocha": "^2.2.4"
   },
   "dependencies": {
