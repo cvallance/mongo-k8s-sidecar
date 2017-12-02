@@ -1,8 +1,7 @@
 'use strict';
 
 const async = require('async');
-const Db = require('mongodb').Db;
-const MongoServer = require('mongodb').Server;
+const MongoClient = require('mongodb').MongoClient;
 
 const config = require('./config');
 
@@ -20,36 +19,33 @@ const getDb = (host, done) => {
     }
   }
 
-  let mongoOptions = {};
   host = host || localhost;
+  let mongoOptions = {
+    authSource: 'admin'
+  };
 
   if (config.mongoSSLEnabled) {
-    mongoOptions = {
+    Object.assign(mongoOptions, {
       ssl: config.mongoSSLEnabled,
       sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
       sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
-    };
+    });
   }
 
-  const mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
+  let auth = '';
+  if (config.username) {
+    const username = encodeURIComponent(config.username);
+    const password = encodeURIComponent(config.password);
+    auth = `${username}:${password}@`;
+  }
 
-  mongoDb.open((err, db) => {
-    if (err) {
-      return done(err);
-    }
+  const mongoDB = new MongoClient();
+  const url = `mongodb://${auth}${host}:${config.mongoPort}/${config.database}`;
 
-    if(config.username) {
-      mongoDb.authenticate(config.username, config.password, err => {
-        if (err) {
-          return done(err);
-        }
+  mongoDB.connect(url, mongoOptions, (err, db) => {
+    if (err) return done(err);
 
-        return done(null, db);
-      });
-    } else {
-      return done(null, db);
-    }
-
+    return done(null, db);
   });
 };
 

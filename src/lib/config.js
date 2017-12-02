@@ -44,7 +44,7 @@ const verifyCorrectnessOfDomain = clusterDomain => {
     return;
   }
 
-  let servers = dns.getServers();
+  const servers = dns.getServers();
   if (!servers || !servers.length) {
     console.log('dns.getServers() didn\'t return any results when verifying the cluster domain \'%s\'.', clusterDomain);
     return;
