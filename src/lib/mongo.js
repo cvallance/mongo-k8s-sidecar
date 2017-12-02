@@ -37,7 +37,7 @@ const getDb = (host, done) => {
     }
 
     if(config.username) {
-      mongoDb.authenticate(config.username, config.password, (err, result) => {
+      mongoDb.authenticate(config.username, config.password, err => {
         if (err) {
           return done(err);
         }
@@ -88,15 +88,14 @@ const initReplSet = (db, hostIpAndPort, done) => {
       console.log('initial rsConfig is', rsConfig);
       rsConfig.configsvr = config.isConfigRS;
       rsConfig.members[0].host = hostIpAndPort;
-      async.retry({times: 20, interval: 500}, callback =>
-        replSetReconfig(db, rsConfig, false, callback),
-      (err, results) => {
-        if (err) {
-          return done(err);
-        }
+      async.retry({times: 20, interval: 500},
+        callback => replSetReconfig(db, rsConfig, false, callback), err => {
+          if (err) {
+            return done(err);
+          }
 
-        return done();
-      });
+          return done();
+        });
     });
   });
 };
