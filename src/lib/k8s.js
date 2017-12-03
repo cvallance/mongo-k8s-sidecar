@@ -17,25 +17,27 @@ const client = new Client({
   token: readToken
 });
 
-const getMongoPods = done => {
-  client.pods.get((err, podResult) => {
-    if (err) {
-      return done(err);
-    }
-    let pods = [];
-    for (let j in podResult) {
-      pods = pods.concat(podResult[j].items);
-    }
-    const labels = config.mongoPodLabelCollection;
-    let results = [];
-    for (let i in pods) {
-      let pod = pods[i];
-      if (podContainsLabels(pod, labels)) {
-        results.push(pod);
+const getMongoPods = () => {
+  return new Promise((resolve, reject) => {
+    client.pods.get((err, podResult) => {
+      if (err) {
+        return reject(err);
       }
-    }
+      let pods = [];
+      for (let j in podResult) {
+        pods = pods.concat(podResult[j].items);
+      }
+      const labels = config.mongoPodLabelCollection;
+      let results = [];
+      for (let i in pods) {
+        let pod = pods[i];
+        if (podContainsLabels(pod, labels)) {
+          results.push(pod);
+        }
+      }
 
-    done(null, results);
+      resolve(results);
+    });
   });
 };
 

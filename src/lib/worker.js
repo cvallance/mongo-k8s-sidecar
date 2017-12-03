@@ -33,58 +33,56 @@ const init = done => {
   });
 };
 
-const workloop = () => {
+const workloop = async() => {
   if (!hostIp || !hostIpAndPort) {
     throw new Error('Must initialize with the host machine\'s addr');
   }
 
   //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
-  async.series([
-    k8s.getMongoPods,
-    mongo.getDb
-  ], (err, results) => {
-    let db = null;
-    if (Array.isArray(results) && results.length === 2) {
-      db = results[1];
-    }
+  let pods = [];
+  try {
+    pods = await k8s.getMongoPods();
+  } catch (err) {
+    return finish(err);
+  }
 
+  let db = null;
+  try {
+    db = await mongo.getDb();
+  } catch (err) {
+    return finish(err);
+  }
+
+  //Lets remove any pods that aren't running or haven't been assigned an IP address yet
+  for (let i = pods.length - 1; i >= 0; i--) {
+    const pod = pods[i];
+    if (pod.status.phase !== 'Running' || !pod.status.podIP) {
+      pods.splice(i, 1);
+    }
+  }
+
+  if (!pods.length) {
+    return finish('No pods are currently running, probably just give them some time.');
+  }
+
+  //Lets try and get the rs status for this mongo instance
+  //If it works with no errors, they are in the rs
+  //If we get a specific error, it means they aren't in the rs
+  mongo.replSetGetStatus(db, (err, status) => {
     if (err) {
-      return finish(err, db);
-    }
-
-    let pods = results[0];
-
-    //Lets remove any pods that aren't running or haven't been assigned an IP address yet
-    for (let i = pods.length - 1; i >= 0; i--) {
-      const pod = pods[i];
-      if (pod.status.phase !== 'Running' || !pod.status.podIP) {
-        pods.splice(i, 1);
+      if (err.code && err.code === 94) {
+        notInReplicaSet(db, pods, err => finish(err, db));
       }
-    }
-
-    if (!pods.length) {
-      return finish('No pods are currently running, probably just give them some time.');
-    }
-
-    //Lets try and get the rs status for this mongo instance
-    //If it works with no errors, they are in the rs
-    //If we get a specific error, it means they aren't in the rs
-    mongo.replSetGetStatus(db, (err, status) => {
-      if (err) {
-        if (err.code && err.code === 94) {
-          notInReplicaSet(db, pods, err => finish(err, db));
-        }
-        else if (err.code && err.code === 93) {
-          invalidReplicaSet(db, pods, status, err => finish(err, db));
-        }
-        else {
-          finish(err, db);
-        }
-        return;
+      else if (err.code && err.code === 93) {
+        invalidReplicaSet(db, pods, status, err => finish(err, db));
       }
+      else {
+        finish(err, db);
+      }
+      return;
+    }
 
-      inReplicaSet(db, pods, status, err => finish(err, db));
-    });
+    inReplicaSet(db, pods, status, err => finish(err, db));
   });
 };
 

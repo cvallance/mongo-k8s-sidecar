@@ -8,44 +8,37 @@ const config = require('./config');
 
 const localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
-const getDb = (host, done) => {
-  //If they called without host like getDb(function(err, db) { ... });
-  if (arguments.length === 1) {
-    if (typeof arguments[0] === 'function') {
-      done = arguments[0];
-      host = localhost;
-    } else {
-      throw new Error('getDb illegal invocation. User either getDb(\'options\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
+const getDb = host => {
+  return new Promise((resolve, reject) => {
+
+    host = host || localhost;
+    let mongoOptions = {
+      authSource: 'admin'
+    };
+
+    if (config.mongoSSLEnabled) {
+      Object.assign(mongoOptions, {
+        ssl: config.mongoSSLEnabled,
+        sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
+        sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
+      });
     }
-  }
 
-  host = host || localhost;
-  let mongoOptions = {
-    authSource: 'admin'
-  };
+    let auth = '';
+    if (config.username) {
+      const username = encodeURIComponent(config.username);
+      const password = encodeURIComponent(config.password);
+      auth = `${username}:${password}@`;
+    }
 
-  if (config.mongoSSLEnabled) {
-    Object.assign(mongoOptions, {
-      ssl: config.mongoSSLEnabled,
-      sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
-      sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
+    const mongoDB = new MongoClient();
+    const url = `mongodb://${auth}${host}:${config.mongoPort}/${config.database}`;
+
+    mongoDB.connect(url, mongoOptions, (err, db) => {
+      if (err) return reject(err);
+
+      resolve(db);
     });
-  }
-
-  let auth = '';
-  if (config.username) {
-    const username = encodeURIComponent(config.username);
-    const password = encodeURIComponent(config.password);
-    auth = `${username}:${password}@`;
-  }
-
-  const mongoDB = new MongoClient();
-  const url = `mongodb://${auth}${host}:${config.mongoPort}/${config.database}`;
-
-  mongoDB.connect(url, mongoOptions, (err, db) => {
-    if (err) return done(err);
-
-    return done(null, db);
   });
 };
 
@@ -182,11 +175,7 @@ const removeDeadMembers = (rsConfig, addrsToRemove) => {
 };
 
 const isInReplSet = (ip, done) => {
-  getDb(ip, (err, db) => {
-    if (err) {
-      return done(err);
-    }
-
+  getDb(ip).then(db => {
     replSetGetConfig(db, (err, rsConfig) => {
       db.close();
       if (!err && rsConfig) {
@@ -196,7 +185,7 @@ const isInReplSet = (ip, done) => {
         done(null, false);
       }
     });
-  });
+  }).catch(err => done(err));
 };
 
 module.exports = {
