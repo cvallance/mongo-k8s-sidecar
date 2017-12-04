@@ -38,7 +38,6 @@
     "ip": "^1.1.5",
     "moment": "^2.10.2",
     "mongodb": "^2.2.33",
-    "node-kubernetes-client": "^0.3.2",
-    "pem": "^1.9.4"
+    "node-kubernetes-client": "^0.3.2"
   }
 }
