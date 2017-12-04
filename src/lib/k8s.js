@@ -11,7 +11,7 @@ const readToken = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount
 
 const client = new Client({
   host: config.k8sROServiceAddress,
-  namespace: config.namespace,
+  namespace: config.k8sNamespace,
   protocol: 'https',
   version: 'v1',
   token: readToken
@@ -27,7 +27,7 @@ const getMongoPods = () => {
       for (let j in podResult) {
         pods = pods.concat(podResult[j].items);
       }
-      const labels = config.mongoPodLabelCollection;
+      const labels = config.k8sMongoPodLabelCollection;
       let results = [];
       for (let i in pods) {
         let pod = pods[i];

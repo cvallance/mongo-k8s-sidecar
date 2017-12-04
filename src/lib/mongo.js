@@ -1,40 +1,77 @@
 'use strict';
 
+const fs = require('fs');
+const {promisify} = require('util');
+
 const async = require('async');
 const MongoClient = require('mongodb').MongoClient;
 
 const config = require('./config');
 
 
-const localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
+const localhost = '127.0.0.1'; // Can access mongo as localhost from a sidecar
 
-const getDb = host => {
-  return new Promise((resolve, reject) => {
+let certificates = null;
+
+const getConnectionURI = host => {
+  let credentials = '';
+  if (config.mongoUsername) {
+    const username = encodeURIComponent(config.mongoUsername);
+    const password = encodeURIComponent(config.mongoPassword);
+    credentials = `${username}:${password}@`;
+  }
+
+  return `mongodb://${credentials}${host}:${config.mongoPort}/${config.mongoDatabase}`;
+};
+
+const getSSLCertificates = () => {
+  return new Promise(async(resolve, reject) => {
+    const readFile = promisify(fs.readFile);
+
+    let tasks = [];
+    if (config.mongoSSLCert) tasks[0] = readFile(config.mongoSSLCert);
+    if (config.mongoSSLKey) tasks[1] = readFile(config.mongoSSLKey);
+    if (config.mongoSSLCA) tasks[2] = readFile(config.mongoSSLCA);
+    if (config.mongoSSLCRL) tasks[3] = readFile(config.mongoSSLCRL);
+    Promise.all(tasks).then(file => {
+      let certs = {};
+      if (file[0]) certs.sslCert = file[0];
+      if (file[1]) certs.sslKey = file[1];
+      if (file[2]) certs.sslCA = file[2];
+      if (file[3]) certs.sslCRL = file[3];
+
+      resolve(certs);
+    }).catch(err => {
+      reject('An error occurred while reading the SSL files', err);
+    });
+  });
+};
+
+const getDB = host => {
+  return new Promise(async(resolve, reject) => {
 
     host = host || localhost;
-    let mongoOptions = {
-      authSource: 'admin'
+    let options = {
+      authSource: 'admin',
+      ssl: config.mongoSSL,
+      sslPass: config.mongoSSLPassword,
+      checkServerIdentity: config.mongoSSLServerIdentityCheck
     };
 
-    if (config.mongoSSLEnabled) {
-      Object.assign(mongoOptions, {
-        ssl: config.mongoSSLEnabled,
-        sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
-        sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
-      });
-    }
-
-    let auth = '';
-    if (config.username) {
-      const username = encodeURIComponent(config.username);
-      const password = encodeURIComponent(config.password);
-      auth = `${username}:${password}@`;
+    if (config.mongoSSL) {
+      if (!certificates) {
+        try {
+          certificates = await getSSLCertificates();
+        } catch (err) {
+          return reject(err);
+        }
+      }
+      Object.assign(options, certificates);
     }
 
     const mongoDB = new MongoClient();
-    const url = `mongodb://${auth}${host}:${config.mongoPort}/${config.database}`;
-
-    mongoDB.connect(url, mongoOptions, (err, db) => {
+    const uri = getConnectionURI(host);
+    mongoDB.connect(uri, options, (err, db) => {
       if (err) return reject(err);
 
       resolve(db);
@@ -65,7 +102,7 @@ const replSetGetStatus = (db, done) => {
 const initReplSet = (db, hostIpAndPort, done) => {
   console.log('initReplSet', hostIpAndPort);
 
-  db.admin().command({ replSetInitiate: {} }, {}, (err) => {
+  db.admin().command({ replSetInitiate: {} }, {}, err => {
     if (err) {
       return done(err);
     }
@@ -175,7 +212,7 @@ const removeDeadMembers = (rsConfig, addrsToRemove) => {
 };
 
 const isInReplSet = (ip, done) => {
-  getDb(ip).then(db => {
+  getDB(ip).then(db => {
     replSetGetConfig(db, (err, rsConfig) => {
       db.close();
       if (!err && rsConfig) {
@@ -189,7 +226,7 @@ const isInReplSet = (ip, done) => {
 };
 
 module.exports = {
-  getDb: getDb,
+  getDB: getDB,
   replSetGetStatus: replSetGetStatus,
   initReplSet: initReplSet,
   addNewReplSetMembers: addNewReplSetMembers,

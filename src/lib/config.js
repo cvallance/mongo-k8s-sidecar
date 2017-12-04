@@ -3,10 +3,10 @@
 const dns = require('dns');
 
 
-const getMongoPodLabels = () => process.env.MONGO_SIDECAR_POD_LABELS || false;
+const getK8sMongoPodLabels = () => process.env.MONGO_SIDECAR_POD_LABELS || false;
 
-const getMongoPodLabelCollection = () => {
-  const podLabels = getMongoPodLabels();
+const getK8sMongoPodLabelCollection = () => {
+  const podLabels = getK8sMongoPodLabels();
   if (!podLabels) {
     return false;
   }
@@ -22,7 +22,7 @@ const getMongoPodLabelCollection = () => {
   return labels;
 };
 
-const getk8sROServiceAddress = () => process.env.KUBERNETES_SERVICE_HOST + ':' + process.env.KUBERNETES_SERVICE_PORT;
+const getK8sROServiceAddress = () => process.env.KUBERNETES_SERVICE_HOST + ':' + process.env.KUBERNETES_SERVICE_PORT;
 
 /**
  * @returns k8sClusterDomain should the name of the kubernetes domain where the cluster is running.
@@ -72,7 +72,7 @@ const getK8sMongoServiceName = () => process.env.KUBERNETES_MONGO_SERVICE_NAME |
 /**
  * @returns mongoPort this is the port on which the mongo instances run. Default is 27017.
  */
-const getMongoDbPort = () => {
+const getMongoPort = () => {
   const mongoPort = process.env.MONGO_PORT || 27017;
   console.log('Using mongo port: %s', mongoPort);
   return mongoPort;
@@ -97,21 +97,27 @@ const isConfigRS = () => {
 const stringToBool = boolStr => ( boolStr === 'true' ) || false;
 
 module.exports = {
-  namespace: process.env.KUBE_NAMESPACE,
-  username: process.env.MONGODB_USERNAME,
-  password: process.env.MONGODB_PASSWORD,
-  database: process.env.MONGODB_DATABASE || 'local',
+  k8sNamespace: process.env.KUBE_NAMESPACE,
+  k8sClusterDomain: getK8sClusterDomain(),
+  k8sROServiceAddress: getK8sROServiceAddress(),
+  k8sMongoServiceName: getK8sMongoServiceName(),
+  k8sMongoPodLabels: getK8sMongoPodLabels(),
+  k8sMongoPodLabelCollection: getK8sMongoPodLabelCollection(),
+
+  mongoPort: getMongoPort(),
+  mongoUsername: process.env.MONGO_USERNAME,
+  mongoPassword: process.env.MONGO_PASSWORD,
+  mongoDatabase: process.env.MONGO_DATABASE || 'local',
+  mongoSSL: stringToBool(process.env.MONGO_SSL),
+  mongoSSLCA: process.env.MONGO_SSL_CA,
+  mongoSSLCert: process.env.MONGO_SSL_CERT,
+  mongoSSLKey: process.env.MONGO_SSL_KEY,
+  mongoSSLPassword: process.env.MONGO_SSL_PASS,
+  mongoSSLCRL: process.env.MONGO_SSL_CRL,
+  mongoSSLServerIdentityCheck: process.env.MONGO_SSL_IDENTITY_CHECK !== 'false',
+
   loopSleepSeconds: process.env.MONGO_SIDECAR_SLEEP_SECONDS || 5,
   unhealthySeconds: process.env.MONGO_SIDECAR_UNHEALTHY_SECONDS || 15,
-  mongoSSLEnabled: stringToBool(process.env.MONGO_SSL_ENABLED),
-  mongoSSLAllowInvalidCertificates: stringToBool(process.env.MONGO_SSL_ALLOW_INVALID_CERTIFICATES),
-  mongoSSLAllowInvalidHostnames: stringToBool(process.env.MONGO_SSL_ALLOW_INVALID_HOSTNAMES),
   env: process.env.NODE_ENV || 'local',
-  mongoPodLabels: getMongoPodLabels(),
-  mongoPodLabelCollection: getMongoPodLabelCollection(),
-  k8sROServiceAddress: getk8sROServiceAddress(),
-  k8sMongoServiceName: getK8sMongoServiceName(),
-  k8sClusterDomain: getK8sClusterDomain(),
-  mongoPort: getMongoDbPort(),
   isConfigRS: isConfigRS(),
 };

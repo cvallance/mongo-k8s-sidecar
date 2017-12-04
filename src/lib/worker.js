@@ -48,7 +48,7 @@ const workloop = async() => {
 
   let db = null;
   try {
-    db = await mongo.getDb();
+    db = await mongo.getDB();
   } catch (err) {
     return finish(err);
   }
