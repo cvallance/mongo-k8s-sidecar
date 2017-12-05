@@ -103,13 +103,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: mongo-persistent-storage
-      annotations:
-        volume.beta.kubernetes.io/storage-class: "fast"
     spec:
+      storageClassName: fast
       accessModes: [ "ReadWriteOnce" ]
-      selector:
-        matchLabels:
-          role: mongo
       resources:
         requests:
           storage: 2Gi
