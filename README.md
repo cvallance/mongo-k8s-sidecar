@@ -13,24 +13,29 @@ https://github.com/cvallance/mongo-k8s-sidecar
 
 There you will also find some helper scripts to test out creating the replica set and resizing it.
 
+
 ### Settings
 
 | Environment Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| KUBE_NAMESPACE | NO |  | The namespace to look up pods in. Not setting it will search for pods in all namespaces. |
-| MONGO_SIDECAR_POD_LABELS | YES |  | This should be a be a comma separated list of key values the same as the podTemplate labels. See above for example. |
-| MONGO_SIDECAR_SLEEP_SECONDS | NO | 5 | This is how long to sleep between work cycles. |
-| MONGO_SIDECAR_UNHEALTHY_SECONDS | NO | 15 | This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set. |
-| MONGO_PORT | NO | 27017 | Configures the mongo port, allows the usage of non-standard ports. |
-| CONFIG_SVR | NO | false | Configures the [configsvr](https://docs.mongodb.com/manual/reference/replica-configuration/#rsconf.configsvr) variable when initializing the replicaset. |
-| KUBERNETES_MONGO_SERVICE_NAME | NO |  | This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID. |
+| --- | --- | --- | ---
 | KUBERNETES_CLUSTER_DOMAIN | NO | cluster.local | This allows the specification of a custom cluster domain name. Used for the creation of a stable network ID of the k8s Mongo   pods. An example could be: "kube.local". |
-| MONGODB_USERNAME | NO | | Configures the mongo username for authentication |
-| MONGODB_PASSWORD | NO | | Configures the mongo password for authentication |
-| MONGODB_DATABASE | NO | local | Configures the mongo authentication database |
-| MONGO_SSL_ENABLED | NO | false | Enable SSL for MongoDB. |
-| MONGO_SSL_ALLOW_INVALID_CERTIFICATES | NO | true | This should be set to true if you want to use self signed certificates. |
-| MONGO_SSL_ALLOW_INVALID_HOSTNAMES | NO | true | This should be set to true if your certificates FQDN's do not match the host name set in your replset. |
+| KUBERNETES_SERVICE_NAME | NO |  | This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID. |
+| KUBERNETES_NAMESPACE | NO |  | The namespace to look up pods in. Not setting it will search for pods in all namespaces. |
+| KUBERNETES_POD_LABELS | YES |  | This should be a be a comma separated list of key values the same as the podTemplate labels. See above for example. |
+| MONGO_PORT | NO | 27017 | Configures the mongo port, allows the usage of non-standard ports. |
+| MONGO_CONFIG_SVR | NO | false | Configures the [configsvr](https://docs.mongodb.com/manual/reference/replica-configuration/#rsconf.configsvr) variable when initializing the replicaset. |
+| MONGO_DATABASE | NO | local | Configures the mongo authentication database |
+| MONGO_USERNAME | NO | | Configures the mongo username for authentication |
+| MONGO_PASSWORD | NO | | Configures the mongo password for authentication
+| MONGO_SSL | NO | false | Enable MongoDB SSL connection. |
+| MONGO_SSL_CA | NO | | Path to SSL CA Certificate |
+| MONGO_SSL_CERT | NO | | Path to SSL Certificate |
+| MONGO_SSL_KEY | NO | | Path to SSL Key |
+| MONGO_SSL_PASS | NO | | SSL Certificate pass phrase |
+| MONGO_SSL_CRL | NO | | Path to SSL Certificate revocation list |
+| MONGO_SSL_IDENTITY_CHECK | NO | true | Server identity check during SSL. Checks server's hostname against the certificate |
+| SIDECAR_SLEEP_SECONDS | NO | 5 | This is how long to sleep between work cycles. |
+| SIDECAR_UNHEALTHY_SECONDS | NO | 15 | This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set. |
 
 In its default configuration the sidecar uses the pods' IPs for the MongodDB replica names. Here is a trimmed example:
 ```
