@@ -3,7 +3,7 @@ MAINTAINER Charles Vallance <vallance.charles@gmail.com>
 
 WORKDIR /opt/cvallance/mongo-k8s-sidecar
 
-COPY package.json /opt/cvallance/mongo-k8s-sidecar/package.json
+COPY package.json package-lock.json /opt/cvallance/mongo-k8s-sidecar/
 
 RUN npm install
 
