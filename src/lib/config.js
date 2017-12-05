@@ -3,14 +3,14 @@
 const dns = require('dns');
 
 
-const getK8sMongoPodLabels = () => process.env.MONGO_SIDECAR_POD_LABELS || false;
+const getK8sMongoPodLabels = () => process.env.KUBERNETES_POD_LABELS || false;
 
 const getK8sMongoPodLabelCollection = () => {
   const podLabels = getK8sMongoPodLabels();
   if (!podLabels) {
     return false;
   }
-  let labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
+  let labels = podLabels.split(',');
   for (let i in labels) {
     const keyAndValue = labels[i].split('=');
     labels[i] = {
@@ -67,7 +67,7 @@ const verifyCorrectnessOfDomain = clusterDomain => {
 /**
  * @returns k8sMongoServiceName should be the name of the (headless) k8s service operating the mongo pods.
  */
-const getK8sMongoServiceName = () => process.env.KUBERNETES_MONGO_SERVICE_NAME || false;
+const getK8sMongoServiceName = () => process.env.KUBERNETES_SERVICE_NAME || false;
 
 /**
  * @returns mongoPort this is the port on which the mongo instances run. Default is 27017.
@@ -82,7 +82,7 @@ const getMongoPort = () => {
  *  @returns boolean to define the RS as a configsvr or not. Default is false
  */
 const isConfigRS = () => {
-  const configSvr = (process.env.CONFIG_SVR || '').trim().toLowerCase();
+  const configSvr = (process.env.MONGO_CONFIG_SVR || '').trim().toLowerCase();
   const configSvrBool = /^(?:y|yes|true|1)$/i.test(configSvr);
   if (configSvrBool) {
     console.log('ReplicaSet is configured as a configsvr');
@@ -97,7 +97,7 @@ const isConfigRS = () => {
 const stringToBool = boolStr => ( boolStr === 'true' ) || false;
 
 module.exports = {
-  k8sNamespace: process.env.KUBE_NAMESPACE,
+  k8sNamespace: process.env.KUBERNETES_NAMESPACE,
   k8sClusterDomain: getK8sClusterDomain(),
   k8sROServiceAddress: getK8sROServiceAddress(),
   k8sMongoServiceName: getK8sMongoServiceName(),
@@ -116,8 +116,8 @@ module.exports = {
   mongoSSLCRL: process.env.MONGO_SSL_CRL,
   mongoSSLServerIdentityCheck: process.env.MONGO_SSL_IDENTITY_CHECK !== 'false',
 
-  loopSleepSeconds: process.env.MONGO_SIDECAR_SLEEP_SECONDS || 5,
-  unhealthySeconds: process.env.MONGO_SIDECAR_UNHEALTHY_SECONDS || 15,
+  loopSleepSeconds: process.env.SIDECAR_SLEEP_SECONDS || 5,
+  unhealthySeconds: process.env.SIDECAR_UNHEALTHY_SECONDS || 15,
   env: process.env.NODE_ENV || 'local',
   isConfigRS: isConfigRS(),
 };
