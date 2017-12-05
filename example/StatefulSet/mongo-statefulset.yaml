@@ -32,6 +32,9 @@ metadata:
 spec:
   serviceName: "mongo"
   replicas: 3
+  selector:
+    matchLabels:
+      role: mongo
   template:
     metadata:
       labels:
@@ -44,10 +47,10 @@ spec:
           image: mongo
           command:
             - mongod
-            - "--replSet"
-            - rs0
+            - "--replSet=rs0"
             - "--smallfiles"
             - "--noprealloc"
+            - "--bind_ip=0.0.0.0"
           ports:
             - containerPort: 27017
           volumeMounts:
@@ -58,6 +61,8 @@ spec:
           env:
             - name: KUBERNETES_POD_LABELS
               value: "role=mongo,environment=test"
+            - name: KUBERNETES_SERVICE_NAME
+              value: "mongo"
   volumeClaimTemplates:
   - metadata:
       name: mongo-persistent-storage
@@ -65,6 +70,9 @@ spec:
         volume.beta.kubernetes.io/storage-class: "fast"
     spec:
       accessModes: [ "ReadWriteOnce" ]
+      selector:
+        matchLabels:
+          role: mongo
       resources:
         requests:
           storage: 2Gi
