@@ -27,10 +27,12 @@ spec:
           image: mongo:latest
           command:
             - mongod
+          args:
             - "--replSet"
             - rs0
             - "--smallfiles"
             - "--noprealloc"
+            - "--bind_ip=0.0.0.0"
           ports:
             - containerPort: 27017
           volumeMounts:
@@ -38,7 +40,7 @@ spec:
             mountPath: /data/db
       volumes:
       - name: mongo-node-3
-        rbd: 
+        rbd:
           monitors:
             - "172.21.1.21:6789"
           pool: rbd
@@ -52,4 +54,3 @@ spec:
         name: mongo-node-3
         role: mongo
         environment: test
-
