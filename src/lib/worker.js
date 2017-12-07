@@ -2,8 +2,8 @@
 
 const dns = require('dns');
 const os = require('os');
+const {promisify} = require('util');
 
-const async = require('async');
 const moment = require('moment');
 const ip = require('ip');
 
@@ -18,19 +18,17 @@ const unhealthySeconds = config.unhealthySeconds;
 let hostIp = false;
 let hostIpAndPort = false;
 
-const init = done => {
-  //Borrowed from here: http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
+const init = async() => {
+  // Borrowed from here: http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
   const hostName = os.hostname();
-  dns.lookup(hostName, (err, addr) => {
-    if (err) {
-      return done(err);
-    }
-
-    hostIp = addr;
+  const lookup = promisify(dns.lookup);
+  try {
+    hostIp = await lookup(hostName);
     hostIpAndPort = hostIp + ':' + config.mongoPort;
-
-    done();
-  });
+    return;
+  } catch (err) {
+    return Promise.reject(err);
+  }
 };
 
 const workloop = async() => {
@@ -38,22 +36,17 @@ const workloop = async() => {
     throw new Error('Must initialize with the host machine\'s addr');
   }
 
-  //Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
+  // Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
   let pods = [];
+  let client = null;
   try {
     pods = await k8s.getMongoPods();
+    client = await mongo.getClient();
   } catch (err) {
     return finish(err);
   }
 
-  let db = null;
-  try {
-    db = await mongo.getDB();
-  } catch (err) {
-    return finish(err);
-  }
-
-  //Lets remove any pods that aren't running or haven't been assigned an IP address yet
+  // Lets remove any pods that aren't running or haven't been assigned an IP address yet
   for (let i = pods.length - 1; i >= 0; i--) {
     const pod = pods[i];
     if (pod.status.phase !== 'Running' || !pod.status.podIP) {
@@ -65,43 +58,48 @@ const workloop = async() => {
     return finish('No pods are currently running, probably just give them some time.');
   }
 
-  //Lets try and get the rs status for this mongo instance
-  //If it works with no errors, they are in the rs
-  //If we get a specific error, it means they aren't in the rs
-  mongo.replSetGetStatus(db, (err, status) => {
-    if (err) {
-      if (err.code && err.code === 94) {
-        notInReplicaSet(db, pods, err => finish(err, db));
-      }
-      else if (err.code && err.code === 93) {
-        invalidReplicaSet(db, pods, status, err => finish(err, db));
-      }
-      else {
-        finish(err, db);
-      }
-      return;
-    }
+  const db = client.db(config.mongoDatabase);
 
-    inReplicaSet(db, pods, status, err => finish(err, db));
-  });
+  // Lets try and get the rs status for this mongo instance
+  // If it works with no errors, they are in the rs
+  // If we get a specific error, it means they aren't in the rs
+  try {
+    const status = await mongo.replSetGetStatus(db);
+    await inReplicaSet(client, pods, status);
+    finish(null, client);
+  } catch (err) {
+    switch (err.code) {
+    case 94:
+      notInReplicaSet(client, pods)
+        .then(() => finish(null, client))
+        .catch(err => finish(err, client));
+      break;
+    case 93:
+      invalidReplicaSet(client, pods)
+        .then(() => finish(null, client))
+        .catch(err => finish(err, client));
+      break;
+    default:
+      finish(err, client);
+    }
+  }
 };
 
-const finish = (err, db) => {
-  if (err) {
-    console.error('Error in workloop', err);
-  }
+const finish = (err, client) => {
+  if (err) console.error('Error in workloop', err);
 
-  if (db && db.close) {
-    db.close();
-  }
+  if (client) client.close();
 
   setTimeout(workloop, loopSleepSeconds * 1000);
 };
 
-const inReplicaSet = (db, pods, status, done) => {
-  //If we're already in a rs and we ARE the primary, do the work of the primary instance (i.e. adding others)
-  //If we're already in a rs and we ARE NOT the primary, just continue, nothing to do
-  //If we're already in a rs and NO ONE is a primary, elect someone to do the work for a primary
+const inReplicaSet = async (client, pods, status) => {
+
+  const db = client.db(config.mongoDatabase);
+
+  // If we're already in a rs and we ARE the primary, do the work of the primary instance (i.e. adding others)
+  // If we're already in a rs and we ARE NOT the primary, just continue, nothing to do
+  // If we're already in a rs and NO ONE is a primary, elect someone to do the work for a primary
   const members = status.members;
 
   let primaryExists = false;
@@ -109,9 +107,7 @@ const inReplicaSet = (db, pods, status, done) => {
     const member = members[i];
 
     if (member.state === 1) {
-      if (member.self) {
-        return primaryWork(db, pods, members, false, done);
-      }
+      if (member.self) return primaryWork(db, pods, members, false);
 
       primaryExists = true;
       break;
@@ -120,15 +116,16 @@ const inReplicaSet = (db, pods, status, done) => {
 
   if (!primaryExists && podElection(pods)) {
     console.log('Pod has been elected as a secondary to do primary work');
-    return primaryWork(db, pods, members, true, done);
+    return primaryWork(db, pods, members, true);
   }
 
-  done();
+  return;
 };
 
-const primaryWork = (db, pods, members, shouldForce, done) => {
-  //Loop over all the pods we have and see if any of them aren't in the current rs members array
-  //If they aren't in there, add them
+const primaryWork = async (db, pods, members, shouldForce) => {
+
+  // Loop over all the pods we have and see if any of them aren't in the current rs members array
+  // If they aren't in there, add them
   const addrToAdd = addrToAddLoop(pods, members);
   const addrToRemove = addrToRemoveLoop(members);
 
@@ -136,38 +133,34 @@ const primaryWork = (db, pods, members, shouldForce, done) => {
     console.log('Addresses to add:    ', addrToAdd);
     console.log('Addresses to remove: ', addrToRemove);
 
-    mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, shouldForce, done);
-    return;
+    return mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, shouldForce);
   }
 
-  done();
+  return;
 };
 
-const notInReplicaSet = (db, pods, done) => {
-  const createTestRequest = pod => completed => {
-    mongo.isInReplSet(pod.status.podIP, completed);
-  };
+const notInReplicaSet = async (client, pods) => {
 
-  //If we're not in a rs and others ARE in the rs, just continue, another path will ensure we will get added
-  //If we're not in a rs and no one else is in a rs, elect one to kick things off
-  let testRequests = [];
-  for (let i in pods) {
-    const pod = pods[i];
+  const db = client.db(config.mongoDatabase);
 
-    if (pod.status.phase === 'Running') {
-      testRequests.push(createTestRequest(pod));
+  try {
+    const createTestRequest = pod => mongo.isInReplSet(pod.status.podIP);
+
+    // If we're not in a rs and others ARE in the rs, just continue, another path will ensure we will get added
+    // If we're not in a rs and no one else is in a rs, elect one to kick things off
+    let testRequests = [];
+    for (let i in pods) {
+      const pod = pods[i];
+
+      if (pod.status.phase === 'Running') {
+        testRequests.push(createTestRequest(pod));
+      }
     }
-  }
 
-  async.parallel(testRequests, (err, results) => {
-    if (err) {
-      return done(err);
-    }
+    const results = await Promise.all(testRequests);
 
     for (let i in results) {
-      if (results[i]) {
-        return done(); //There's one in a rs, nothing to do
-      }
+      if (results[i]) return; // There's one in a rs, nothing to do
     }
 
     if (podElection(pods)) {
@@ -176,15 +169,19 @@ const notInReplicaSet = (db, pods, done) => {
       const primaryStableNetworkAddressAndPort = getPodStableNetworkAddressAndPort(primary);
       // Prefer the stable network ID over the pod IP, if present.
       const primaryAddressAndPort = primaryStableNetworkAddressAndPort || hostIpAndPort;
-      mongo.initReplSet(db, primaryAddressAndPort, done);
-      return;
+      return mongo.initReplSet(db, primaryAddressAndPort);
     }
 
-    done();
-  });
+    return;
+  } catch (err) {
+    return Promise.reject(err);
+  }
 };
 
-const invalidReplicaSet = (db, pods, status, done) => {
+const invalidReplicaSet = async (client, pods, status) => {
+
+  const db = client.db(config.mongoDatabase);
+
   // The replica set config has become invalid, probably due to catastrophic errors like all nodes going down
   // this will force re-initialize the replica set on this node. There is a small chance for data loss here
   // because it is forcing a reconfigure, but chances are recovering from the invalid state is more important
@@ -196,28 +193,28 @@ const invalidReplicaSet = (db, pods, status, done) => {
   console.log('Invalid replica set');
   if (!podElection(pods)) {
     console.log('Didn\'t win the pod election, doing nothing');
-    return done();
+    return;
   }
 
   console.log('Won the pod election, forcing re-initialization');
   const addrToAdd = addrToAddLoop(pods, members);
   const addrToRemove = addrToRemoveLoop(members);
 
-  mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true, err => done(err));
+  return mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true);
 };
 
 const podElection = pods => {
-  //Because all the pods are going to be running this code independently, we need a way to consistently find the same
-  //node to kick things off, the easiest way to do that is convert their ips into longs and find the highest
+  // Because all the pods are going to be running this code independently, we need a way to consistently find the same
+  // node to kick things off, the easiest way to do that is convert their ips into longs and find the highest
   pods.sort((a, b) => {
     const aIpVal = ip.toLong(a.status.podIP);
     const bIpVal = ip.toLong(b.status.podIP);
     if (aIpVal < bIpVal) return -1;
     if (aIpVal > bIpVal) return 1;
-    return 0; //Shouldn't get here... all pods should have different ips
+    return 0; // Shouldn't get here... all pods should have different ips
   });
 
-  //Are we the lucky one?
+  // Are we the lucky one?
   return pods[0].status.podIP === hostIp;
 };
 
@@ -272,9 +269,7 @@ const memberShouldBeRemoved = member => !member.health
  * WWW.XXX.YYY.ZZZ:27017. It returns undefined, if the data is insufficient to retrieve the IP address.
  */
 const getPodIpAddressAndPort = pod => {
-  if (!pod || !pod.status || !pod.status.podIP) {
-    return;
-  }
+  if (!pod || !pod.status || !pod.status.podIP) return;
 
   return pod.status.podIP + ':' + config.mongoPort;
 };

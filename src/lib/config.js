@@ -1,6 +1,7 @@
 'use strict';
 
 const dns = require('dns');
+const {promisify} = require('util');
 
 
 const getK8sMongoPodLabels = () => process.env.KUBERNETES_POD_LABELS || false;
@@ -39,10 +40,8 @@ const getK8sClusterDomain = () => {
  * Raises a console warning if that is not the case.
  * @param clusterDomain the domain to verify.
  */
-const verifyCorrectnessOfDomain = clusterDomain => {
-  if (!clusterDomain) {
-    return;
-  }
+const verifyCorrectnessOfDomain = async clusterDomain => {
+  if (!clusterDomain) return;
 
   const servers = dns.getServers();
   if (!servers || !servers.length) {
@@ -50,18 +49,22 @@ const verifyCorrectnessOfDomain = clusterDomain => {
     return;
   }
 
-  // In the case that we can resolve the DNS servers, we get the first and try to retrieve its host.
-  dns.reverse(servers[0], (err, host) => {
-    if (err) {
-      console.warn('Error occurred trying to verify the cluster domain \'%s\'',  clusterDomain);
-    }
-    else if (host.length < 1 || !host[0].endsWith(clusterDomain)) {
+  try {
+    const reverse = promisify(dns.reverse);
+
+    // In the case that we can resolve the DNS servers, we get the first and try to retrieve its host.
+    const host = await reverse(servers[0]);
+    if (host.length < 1 || !host[0].endsWith(clusterDomain)) {
       console.warn('Possibly wrong cluster domain name! Detected \'%s\' but expected similar to \'%s\'',  clusterDomain, host);
     }
     else {
       console.log('The cluster domain \'%s\' was successfully verified.', clusterDomain);
     }
-  });
+  } catch (err) {
+    console.warn('Error occurred trying to verify the cluster domain \'%s\'',  clusterDomain);
+  }
+
+  return;
 };
 
 /**
