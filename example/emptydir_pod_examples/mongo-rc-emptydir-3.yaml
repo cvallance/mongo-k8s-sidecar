@@ -27,10 +27,12 @@ spec:
           image: mongo
           command:
             - mongod
+          args:
             - "--replSet"
             - rs0
             - "--smallfiles"
             - "--noprealloc"
+            - "--bind_ip=0.0.0.0"
           ports:
             - containerPort: 27017
               hostPort: 4000
@@ -40,7 +42,7 @@ spec:
         - name: mongo-sidecar
           image: cvallance/mongo-k8s-sidecar
           env:
-            - name: MONGO_SIDECAR_POD_LABELS
+            - name: KUBERNETES_SERVICE_NAME
               value: "role=mongo,environment=test"
       volumes:
         - name: mongo-persistent-storage

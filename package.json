@@ -28,16 +28,15 @@
   },
   "homepage": "https://github.com/cvallance/mongo-k8s-sidecar",
   "devDependencies": {
-    "chai": "^2.3.0",
-    "mocha": "^2.2.4"
+    "chai": "^4.1.2",
+    "eslint": "^4.13.0",
+    "mocha": "^4.0.1"
   },
   "dependencies": {
-    "async": "^1.5.0",
-    "forever": "^0.14.1",
-    "ip": "^0.3.2",
+    "forever": "^0.15.3",
+    "ip": "^1.1.5",
     "moment": "^2.10.2",
-    "mongodb": "^2.0.28",
-    "node-kubernetes-client": "^0.2.2",
-    "pem": "^1.9.4"
+    "mongodb": "^3.0.0-rc0",
+    "node-kubernetes-client": "^0.3.2"
   }
 }

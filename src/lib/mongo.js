@@ -1,164 +1,162 @@
-var Db = require('mongodb').Db;
-var MongoServer = require('mongodb').Server;
-var async = require('async');
-var config = require('./config');
+'use strict';
 
-var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
+const fs = require('fs');
+const {promisify} = require('util');
 
-var getDb = function(host, done) {
-  //If they called without host like getDb(function(err, db) { ... });
-  if (arguments.length === 1) {
-    if (typeof arguments[0] === 'function') {
-      done = arguments[0];
-      host = localhost;
-    } else {
-      throw new Error('getDb illegal invocation. User either getDb(\'options\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
-    }
+const MongoClient = require('mongodb').MongoClient;
+
+const config = require('./config');
+
+
+const localhost = '127.0.0.1'; // Can access mongo as localhost from a sidecar
+
+let certificates = null;
+
+const getConnectionURI = host => {
+  let credentials = '';
+  if (config.mongoUsername) {
+    const username = encodeURIComponent(config.mongoUsername);
+    const password = encodeURIComponent(config.mongoPassword);
+    credentials = `${username}:${password}@`;
   }
 
-  var mongoOptions = {};
+  return `mongodb://${credentials}${host}:${config.mongoPort}/${config.mongoDatabase}`;
+};
+
+const getSSLCertificates = async () => {
+  const readFile = promisify(fs.readFile);
+
+  try {
+    let tasks = [];
+    if (config.mongoSSLCert) tasks[0] = readFile(config.mongoSSLCert);
+    if (config.mongoSSLKey) tasks[1] = readFile(config.mongoSSLKey);
+    if (config.mongoSSLCA) tasks[2] = readFile(config.mongoSSLCA);
+    if (config.mongoSSLCRL) tasks[3] = readFile(config.mongoSSLCRL);
+
+    const files = await Promise.all(tasks);
+
+    let certs = {};
+    if (files[0]) certs.sslCert = files[0];
+    if (files[1]) certs.sslKey = files[1];
+    if (files[2]) certs.sslCA = files[2];
+    if (files[3]) certs.sslCRL = files[3];
+    return certs;
+
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+const getClient = async host => {
+
   host = host || localhost;
+  let options = {
+    authSource: 'admin',
+    ssl: config.mongoSSL,
+    sslPass: config.mongoSSLPassword,
+    checkServerIdentity: config.mongoSSLServerIdentityCheck
+  };
 
-  if (config.mongoSSLEnabled) {
-    mongoOptions = {
-      ssl: config.mongoSSLEnabled,
-      sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
-      sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
+  try {
+    if (config.mongoSSL) {
+      certificates = certificates || await getSSLCertificates();
+      Object.assign(options, certificates);
     }
+    const uri = getConnectionURI(host);
+    const client = new MongoClient(uri, options);
+    return client.connect();
+  } catch (err) {
+    return Promise.reject(err);
   }
-
-  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
-
-  mongoDb.open(function (err, db) {
-    if (err) {
-      return done(err);
-    }
-
-    if(config.username) {
-        mongoDb.authenticate(config.username, config.password, function(err, result) {
-            if (err) {
-              return done(err);
-            }
-
-            return done(null, db);
-        });
-    } else {
-      return done(null, db);
-    }
-
-  });
 };
 
-var replSetGetConfig = function(db, done) {
-  db.admin().command({ replSetGetConfig: 1 }, {}, function (err, results) {
-    if (err) {
-      return done(err);
-    }
+const replSetGetConfig = db => db.admin().command({ replSetGetConfig: 1 }, {})
+  .then(results => results.config);
 
-    return done(null, results.config);
-  });
-};
+const replSetGetStatus = db => db.admin().command({ replSetGetStatus: {} }, {});
 
-var replSetGetStatus = function(db, done) {
-  db.admin().command({ replSetGetStatus: {} }, {}, function (err, results) {
-    if (err) {
-      return done(err);
-    }
-
-    return done(null, results);
-  });
-};
-
-var initReplSet = function(db, hostIpAndPort, done) {
+const initReplSet = async (db, hostIpAndPort) => {
   console.log('initReplSet', hostIpAndPort);
 
-  db.admin().command({ replSetInitiate: {} }, {}, function (err) {
-    if (err) {
-      return done(err);
+  try {
+    await db.admin().command({ replSetInitiate: {} }, {});
+
+    // We need to hack in the fix where the host is set to the hostname which isn't reachable from other hosts
+    const rsConfig = await replSetGetConfig(db);
+
+    console.log('initial rsConfig is', rsConfig);
+    rsConfig.configsvr = config.isConfigRS;
+    rsConfig.members[0].host = hostIpAndPort;
+
+    const times = 20;
+    const interval = 500;
+    const wait = time => new Promise(resolve => setTimeout(resolve, time));
+
+    let tries = 0;
+    while (tries < times) {
+      try {
+        return await replSetReconfig(db, rsConfig, false);
+      } catch (err) {
+        await wait(interval);
+        tries++;
+        if (tries >= times) return Promise.reject(err);
+      }
     }
 
-    //We need to hack in the fix where the host is set to the hostname which isn't reachable from other hosts
-    replSetGetConfig(db, function(err, rsConfig) {
-      if (err) {
-        return done(err);
-      }
-
-      console.log('initial rsConfig is', rsConfig);
-      rsConfig.configsvr = config.isConfigRS;
-      rsConfig.members[0].host = hostIpAndPort;
-      async.retry({times: 20, interval: 500}, function(callback) {
-        replSetReconfig(db, rsConfig, false, callback);
-      }, function(err, results) {
-        if (err) {
-          return done(err);
-        }
-
-        return done();
-      });
-    });
-  });
+  } catch (err) {
+    return Promise.reject(err);
+  }
 };
 
-var replSetReconfig = function(db, rsConfig, force, done) {
+const replSetReconfig = (db, rsConfig, force) => {
   console.log('replSetReconfig', rsConfig);
 
   rsConfig.version++;
 
-  db.admin().command({ replSetReconfig: rsConfig, force: force }, {}, function (err) {
-    if (err) {
-      return done(err);
-    }
-
-    return done();
-  });
+  return db.admin().command({ replSetReconfig: rsConfig, force: force }, {});
 };
 
-var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, done) {
-  replSetGetConfig(db, function(err, rsConfig) {
-    if (err) {
-      return done(err);
-    }
-
+const addNewReplSetMembers = async (db, addrToAdd, addrToRemove, shouldForce) => {
+  try {
+    let rsConfig = await replSetGetConfig(db);
     removeDeadMembers(rsConfig, addrToRemove);
-
     addNewMembers(rsConfig, addrToAdd);
-
-    replSetReconfig(db, rsConfig, shouldForce, done);
-  });
+    return replSetReconfig(db, rsConfig, shouldForce);
+  } catch (err) {
+    return Promise.reject(err);
+  }
 };
 
-var addNewMembers = function(rsConfig, addrsToAdd) {
+const addNewMembers = (rsConfig, addrsToAdd) => {
   if (!addrsToAdd || !addrsToAdd.length) return;
 
-  //Follows what is basically in mongo's rs.add function
-  var max = 0;
+  // Follows what is basically in mongo's rs.add function
+  let max = 0;
 
-  for (var i in rsConfig.members) {
+  for (let i in rsConfig.members) {
     if (rsConfig.members[i]._id > max) {
       max = rsConfig.members[i]._id;
     }
   }
 
-  for (var i in addrsToAdd) {
-    var addrToAdd = addrsToAdd[i];
+  for (let i in addrsToAdd) {
+    const addrToAdd = addrsToAdd[i];
 
     // Somehow we can get a race condition where the member config has been updated since we created the list of
     // addresses to add (addrsToAdd) ... so do another loop to make sure we're not adding duplicates
-    var exists = false;
-    for (var j in rsConfig.members) {
-      var member = rsConfig.members[j];
+    let exists = false;
+    for (let j in rsConfig.members) {
+      let member = rsConfig.members[j];
       if (member.host === addrToAdd) {
-        console.log("Host [%s] already exists in the Replicaset. Not adding...", addrToAdd);
+        console.log('Host [%s] already exists in the Replicaset. Not adding...', addrToAdd);
         exists = true;
         break;
       }
     }
 
-    if (exists) {
-      continue;
-    }
+    if (exists) continue;
 
-    var cfg = {
+    const cfg = {
       _id: ++max,
       host: addrToAdd
     };
@@ -167,13 +165,13 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
   }
 };
 
-var removeDeadMembers = function(rsConfig, addrsToRemove) {
+const removeDeadMembers = (rsConfig, addrsToRemove) => {
   if (!addrsToRemove || !addrsToRemove.length) return;
 
-  for (var i in addrsToRemove) {
-    var addrToRemove = addrsToRemove[i];
-    for (var j in rsConfig.members) {
-      var member = rsConfig.members[j];
+  for (let i in addrsToRemove) {
+    const addrToRemove = addrsToRemove[i];
+    for (let j in rsConfig.members) {
+      const member = rsConfig.members[j];
       if (member.host === addrToRemove) {
         rsConfig.members.splice(j, 1);
         break;
@@ -182,28 +180,24 @@ var removeDeadMembers = function(rsConfig, addrsToRemove) {
   }
 };
 
-var isInReplSet = function(ip, done) {
-  getDb(ip, function(err, db) {
-    if (err) {
-      return done(err);
-    }
-
-    replSetGetConfig(db, function(err, rsConfig) {
-      db.close();
-      if (!err && rsConfig) {
-        done(null, true);
-      }
-      else {
-        done(null, false);
-      }
-    });
-  });
+const isInReplSet = async ip => {
+  let client = null;
+  try {
+    client = await getClient(ip);
+    await replSetGetConfig(client);
+    return true;
+  } catch (err) {
+    if (err.code === 93) return false;
+    return Promise.reject(err);
+  } finally {
+    if (client) client.close();
+  }
 };
 
 module.exports = {
-  getDb: getDb,
-  replSetGetStatus: replSetGetStatus,
-  initReplSet: initReplSet,
-  addNewReplSetMembers: addNewReplSetMembers,
-  isInReplSet: isInReplSet
+  getClient,
+  replSetGetStatus,
+  initReplSet,
+  addNewReplSetMembers,
+  isInReplSet
 };

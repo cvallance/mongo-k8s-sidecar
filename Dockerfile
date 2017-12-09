@@ -1,9 +1,11 @@
 FROM node:alpine
 MAINTAINER Charles Vallance <vallance.charles@gmail.com>
 
+ENV NODE_ENV=production
+
 WORKDIR /opt/cvallance/mongo-k8s-sidecar
 
-COPY package.json /opt/cvallance/mongo-k8s-sidecar/package.json
+COPY package.json package-lock.json /opt/cvallance/mongo-k8s-sidecar/
 
 RUN npm install
 

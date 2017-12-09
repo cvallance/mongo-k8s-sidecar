@@ -9,9 +9,9 @@ A Single Replica Set member in kubernetes and GCE(Google Computing Engine) look 
 
 ![](images/figure1.png)
 
-In our environment, we choose Ceph RBD as our block storage. 
+In our environment, we choose Ceph RBD as our block storage.
 
-A single rs defined with kubernetes and ceph rbd: 
+A single rs defined with kubernetes and ceph rbd:
 
 ```yaml
 #	Copyright 2016, Google, Inc.
@@ -44,10 +44,12 @@ spec:
           image: mongo:latest
           command:
             - mongod
+          args:
             - "--replSet"
             - rs0
             - "--smallfiles"
             - "--noprealloc"
+            - "--bind_ip=0.0.0.0"
           ports:
             - containerPort: 27017
           volumeMounts:
@@ -55,7 +57,7 @@ spec:
             mountPath: /data/db
       volumes:
       - name: mongo-node-1
-        rbd: 
+        rbd:
           monitors:
             - "172.21.1.11:6789"
           pool: rbd
@@ -150,10 +152,10 @@ kubectl create -f mongo-rc-rbd-1.yaml
 kubectl create -f mongo-svc-1.yaml
 ```
 
-#### MongoDB replica set: Three members 
+#### MongoDB replica set: Three members
 ---------------------------------------------------------------
 
-Figure 2 shows the configuration for a second member of the replica set. 
+Figure 2 shows the configuration for a second member of the replica set.
 
 ![](images/figure2.png)
 
