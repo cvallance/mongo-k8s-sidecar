@@ -23,7 +23,7 @@ const getK8sMongoPodLabelCollection = () => {
   return labels;
 };
 
-const getK8sROServiceAddress = () => process.env.KUBERNETES_SERVICE_HOST + ':' + process.env.KUBERNETES_SERVICE_PORT;
+const getK8sROServiceAddress = () => `${process.env.KUBERNETES_SERVICE_HOST}:${process.env.KUBERNETES_SERVICE_PORT}`;
 
 /**
  * @returns k8sClusterDomain should the name of the kubernetes domain where the cluster is running.

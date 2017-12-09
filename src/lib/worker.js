@@ -36,7 +36,6 @@ const workloop = async() => {
     throw new Error('Must initialize with the host machine\'s addr');
   }
 
-  // Do in series so if k8s.getMongoPods fails, it doesn't open a db connection
   let pods = [];
   let client = null;
   try {
@@ -65,17 +64,17 @@ const workloop = async() => {
   // If we get a specific error, it means they aren't in the rs
   try {
     const status = await mongo.replSetGetStatus(db);
-    await inReplicaSet(client, pods, status);
+    await inReplicaSet(db, pods, status);
     finish(null, client);
   } catch (err) {
     switch (err.code) {
     case 94:
-      notInReplicaSet(client, pods)
+      notInReplicaSet(db, pods)
         .then(() => finish(null, client))
         .catch(err => finish(err, client));
       break;
     case 93:
-      invalidReplicaSet(client, pods)
+      invalidReplicaSet(db, pods)
         .then(() => finish(null, client))
         .catch(err => finish(err, client));
       break;
@@ -93,9 +92,7 @@ const finish = (err, client) => {
   setTimeout(workloop, loopSleepSeconds * 1000);
 };
 
-const inReplicaSet = async (client, pods, status) => {
-
-  const db = client.db(config.mongoDatabase);
+const inReplicaSet = async (db, pods, status) => {
 
   // If we're already in a rs and we ARE the primary, do the work of the primary instance (i.e. adding others)
   // If we're already in a rs and we ARE NOT the primary, just continue, nothing to do
@@ -139,10 +136,7 @@ const primaryWork = async (db, pods, members, shouldForce) => {
   return;
 };
 
-const notInReplicaSet = async (client, pods) => {
-
-  const db = client.db(config.mongoDatabase);
-
+const notInReplicaSet = async (db, pods) => {
   try {
     const createTestRequest = pod => mongo.isInReplSet(pod.status.podIP);
 
@@ -178,9 +172,7 @@ const notInReplicaSet = async (client, pods) => {
   }
 };
 
-const invalidReplicaSet = async (client, pods, status) => {
-
-  const db = client.db(config.mongoDatabase);
+const invalidReplicaSet = async (db, pods, status) => {
 
   // The replica set config has become invalid, probably due to catastrophic errors like all nodes going down
   // this will force re-initialize the replica set on this node. There is a small chance for data loss here
@@ -271,7 +263,7 @@ const memberShouldBeRemoved = member => !member.health
 const getPodIpAddressAndPort = pod => {
   if (!pod || !pod.status || !pod.status.podIP) return;
 
-  return pod.status.podIP + ':' + config.mongoPort;
+  return `${pod.status.podIP}:${config.mongoPort}`;
 };
 
 /**
@@ -287,12 +279,10 @@ const getPodStableNetworkAddressAndPort = pod => {
     return;
   }
 
-  const clusterDomain = config.k8sClusterDomain;
-  const mongoPort = config.mongoPort;
-  return pod.metadata.name + '.' + config.k8sMongoServiceName + '.' + pod.metadata.namespace + '.svc.' + clusterDomain + ':' + mongoPort;
+  return `${pod.metadata.name}.${config.k8sMongoServiceName}.${pod.metadata.namespace}.svc.${config.k8sClusterDomain}:${config.mongoPort}`;
 };
 
 module.exports = {
-  init: init,
-  workloop: workloop
+  init,
+  workloop
 };

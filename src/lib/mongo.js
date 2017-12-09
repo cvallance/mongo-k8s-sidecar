@@ -64,7 +64,7 @@ const getClient = async host => {
     }
     const uri = getConnectionURI(host);
     const client = new MongoClient(uri, options);
-    return await client.connect();
+    return client.connect();
   } catch (err) {
     return Promise.reject(err);
   }
@@ -121,7 +121,7 @@ const addNewReplSetMembers = async (db, addrToAdd, addrToRemove, shouldForce) =>
     let rsConfig = await replSetGetConfig(db);
     removeDeadMembers(rsConfig, addrToRemove);
     addNewMembers(rsConfig, addrToAdd);
-    return await replSetReconfig(db, rsConfig, shouldForce);
+    return replSetReconfig(db, rsConfig, shouldForce);
   } catch (err) {
     return Promise.reject(err);
   }
@@ -181,21 +181,23 @@ const removeDeadMembers = (rsConfig, addrsToRemove) => {
 };
 
 const isInReplSet = async ip => {
+  let client = null;
   try {
-    const client = await getClient(ip);
+    client = await getClient(ip);
     await replSetGetConfig(client);
-    client.close();
     return true;
   } catch (err) {
     if (err.code === 93) return false;
     return Promise.reject(err);
+  } finally {
+    if (client) client.close();
   }
 };
 
 module.exports = {
-  getClient: getClient,
-  replSetGetStatus: replSetGetStatus,
-  initReplSet: initReplSet,
-  addNewReplSetMembers: addNewReplSetMembers,
-  isInReplSet: isInReplSet
+  getClient,
+  replSetGetStatus,
+  initReplSet,
+  addNewReplSetMembers,
+  isInReplSet
 };

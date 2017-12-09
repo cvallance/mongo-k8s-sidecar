@@ -52,5 +52,5 @@ const podContainsLabels = (pod, labels) => {
 };
 
 module.exports = {
-  getMongoPods: getMongoPods
+  getMongoPods
 };

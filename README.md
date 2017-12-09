@@ -1,7 +1,6 @@
 # Mongo Kubernetes Replica Set Sidecar
 
-This project is as a PoC to setup a MongoDB replica set using Kubernetes. It should handle resizing of any type and be
-resilient to the various conditions both MongoDB and Kubernetes can find themselves in.
+This project is as a PoC to setup a MongoDB replica set using Kubernetes. It should handle resizing of any type and be resilient to the various conditions both MongoDB and Kubernetes can find themselves in.
 
 ## How to use it
 
@@ -17,7 +16,7 @@ There you will also find some helper scripts to test out creating the replica se
 ### Settings
 
 | Environment Variable | Required | Default | Description |
-| --- | --- | --- | ---
+| --- | --- | --- | --- |
 | KUBERNETES_CLUSTER_DOMAIN | NO | cluster.local | This allows the specification of a custom cluster domain name. Used for the creation of a stable network ID of the k8s Mongo   pods. An example could be: "kube.local". |
 | KUBERNETES_SERVICE_NAME | NO |  | This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID. |
 | KUBERNETES_NAMESPACE | NO |  | The namespace to look up pods in. Not setting it will search for pods in all namespaces. |
@@ -113,6 +112,7 @@ Command
           image: mongo
           command:
             - mongod
+          args:
             - "--replSet=rs0"
             - "--sslMode=requireSSL"
             - "--sslCAFile=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
