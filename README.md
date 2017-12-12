@@ -110,6 +110,8 @@ Command
             - mongod
             - "--replSet"
             - heroku
+            - "--bind_ip"
+            - 0.0.0.0
             - "--smallfiles"
             - "--noprealloc"
             - "--sslMode"
