@@ -2,6 +2,7 @@ var Db = require('mongodb').Db;
 var MongoServer = require('mongodb').Server;
 var async = require('async');
 var config = require('./config');
+var k8s = require('./k8s');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
@@ -160,8 +161,13 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
 
     var cfg = {
       _id: ++max,
-      host: addrToAdd
+      host: addrsToAdd[i].host
     };
+
+    // check if we want to add the pod as an arbiter only based on its labels
+    if (k8s.podContainsLabels(addrsToAdd[i].pod, config.mongoPodLabelCollectionArbiter)) {
+      cfg.arbiterOnly = true;
+    }
 
     rsConfig.members.push(cfg);
   }

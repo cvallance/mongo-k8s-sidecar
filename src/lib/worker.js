@@ -216,7 +216,10 @@ var invalidReplicaSet = function(db, pods, status, done) {
 var podElection = function(pods) {
   //Because all the pods are going to be running this code independently, we need a way to consistently find the same
   //node to kick things off, the easiest way to do that is convert their ips into longs and find the highest
-  pods.sort(function(a,b) {
+
+  var filtered_pods = pods.filter(function(pod) { return !k8s.podContainsLabels(pod, config.mongoPodLabelCollectionArbiter); })
+
+  filtered_pods.sort(function(a,b) {
     var aIpVal = ip.toLong(a.status.podIP);
     var bIpVal = ip.toLong(b.status.podIP);
     if (aIpVal < bIpVal) return -1;
@@ -225,7 +228,7 @@ var podElection = function(pods) {
   });
 
   //Are we the lucky one?
-  return pods[0].status.podIP == hostIp;
+  return filtered_pods[0].status.podIP == hostIp;
 };
 
 var addrToAddLoop = function(pods, members) {
@@ -253,7 +256,8 @@ var addrToAddLoop = function(pods, members) {
     if (!podInRs) {
       // If the node was not present, we prefer the stable network ID, if present.
       var addrToUse = podStableNetworkAddr || podIpAddr;
-      addrToAdd.push(addrToUse);
+      var obj = { host: addrToUse, pod: pod };
+      addrToAdd.push(obj);
     }
   }
   return addrToAdd;
