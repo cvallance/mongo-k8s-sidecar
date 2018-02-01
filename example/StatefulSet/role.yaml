@@ -1,0 +1,23 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: mongo
+  name: mongo-pod-read
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: mongo-pod-read
+  namespace: mongo
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: mongo
+roleRef:
+  kind: Role
+  name: mongo-pod-read
+  apiGroup: rbac.authorization.k8s.io
