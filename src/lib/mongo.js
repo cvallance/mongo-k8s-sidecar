@@ -130,17 +130,25 @@ var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, do
 var addNewMembers = function(rsConfig, addrsToAdd) {
   if (!addrsToAdd || !addrsToAdd.length) return;
 
-  //Follows what is basically in mongo's rs.add function
-  var max = 0;
+  var memberIds = [];
+  var newMemberId = 0;
 
+  // Build a list of existing rs member IDs
   for (var i in rsConfig.members) {
-    if (rsConfig.members[i]._id > max) {
-      max = rsConfig.members[i]._id;
-    }
+    memberIds.push(rsConfig.members[i]._id);
   }
 
   for (var i in addrsToAdd) {
     var addrToAdd = addrsToAdd[i];
+
+    // Search for the next available member ID (max 255)
+    for (var i = newMemberId; i <= 255; i++) {
+      if (!memberIds.includes(i)) {
+        newMemberId = i;
+        memberIds.push(newMemberId);
+        break;
+      }
+    }
 
     // Somehow we can get a race condition where the member config has been updated since we created the list of
     // addresses to add (addrsToAdd) ... so do another loop to make sure we're not adding duplicates
@@ -159,7 +167,7 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
     }
 
     var cfg = {
-      _id: ++max,
+      _id: newMemberId,
       host: addrToAdd
     };
 
