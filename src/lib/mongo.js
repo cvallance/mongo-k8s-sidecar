@@ -113,21 +113,19 @@ var replSetReconfig = function(db, rsConfig, force, done) {
   });
 };
 
-var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, done) {
+var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, hiddenMembers, shouldForce, done) {
   replSetGetConfig(db, function(err, rsConfig) {
     if (err) {
       return done(err);
     }
 
     removeDeadMembers(rsConfig, addrToRemove);
-
-    addNewMembers(rsConfig, addrToAdd);
-
+    addNewMembers(rsConfig, addrToAdd, hiddenMembers);
     replSetReconfig(db, rsConfig, shouldForce, done);
   });
 };
 
-var addNewMembers = function(rsConfig, addrsToAdd) {
+var addNewMembers = function(rsConfig, addrsToAdd, hiddenMembers) {
   if (!addrsToAdd || !addrsToAdd.length) return;
 
   var memberIds = [];
@@ -170,6 +168,12 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
       _id: newMemberId,
       host: addrToAdd
     };
+
+    if (hiddenMembers.get(addrToAdd)) {
+      console.log("Host [%s] is a hidden member of Replicaset.", addrToAdd);
+      cfg.hidden = true;
+      cfg.priority = 0;
+    }
 
     rsConfig.members.push(cfg);
   }

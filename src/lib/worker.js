@@ -134,12 +134,13 @@ var primaryWork = function(db, pods, members, shouldForce, done) {
   //If they aren't in there, add them
   var addrToAdd = addrToAddLoop(pods, members);
   var addrToRemove = addrToRemoveLoop(members);
+  var hiddenMembers = hiddenMembersLoop(pods);
 
   if (addrToAdd.length || addrToRemove.length) {
     console.log('Addresses to add:    ', addrToAdd);
     console.log('Addresses to remove: ', addrToRemove);
 
-    mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, shouldForce, done);
+    mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, hiddenMembers, shouldForce, done);
     return;
   }
 
@@ -207,8 +208,9 @@ var invalidReplicaSet = function(db, pods, status, done) {
   console.log("Won the pod election, forcing re-initialization");
   var addrToAdd = addrToAddLoop(pods, members);
   var addrToRemove = addrToRemoveLoop(members);
+  var hiddenMembers = hiddenMembersLoop(pods);
 
-  mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true, function(err) {
+  mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, hiddenMembers, true, function(err) {
     done(err);
   });
 };
@@ -257,6 +259,30 @@ var addrToAddLoop = function(pods, members) {
     }
   }
   return addrToAdd;
+};
+
+var hiddenMembersLoop = function(pods) {
+  var hiddenMembers = new Map();
+
+  for (var i in pods) {
+    var pod = pods[i];
+    if (pod.status.phase !== 'Running') {
+      continue;
+    }
+
+    var podIpAddr = getPodIpAddressAndPort(pod);
+    var podStableNetworkAddr = getPodStableNetworkAddressAndPort(pod);
+    var addrToUse = podStableNetworkAddr || podIpAddr;
+
+    var hiddenLabel = config.mongoHiddenPodLabelCollection;
+    if (hiddenLabel) {
+      if (k8s.podContainsLabels(pod, hiddenLabel)) {
+        hiddenMembers.set(addrToUse, true)
+      }
+    }
+  }
+
+  return hiddenMembers;
 };
 
 var addrToRemoveLoop = function(members) {

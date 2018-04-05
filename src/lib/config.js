@@ -9,7 +9,23 @@ var getMongoPodLabelCollection = function() {
   if (!podLabels) {
     return false;
   }
-  var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
+  return getPodLabelCollection(podLabels);
+};
+
+var getMongoHiddenPodLabels = function() {
+  return process.env.MONGO_HIDDEN_SIDECAR_POD_LABELS || false;
+};
+
+var getMongoHiddenPodLabelCollection = function() {
+  var podLabels = getMongoHiddenPodLabels();
+  if (!podLabels) {
+    return false;
+  }
+  return getPodLabelCollection(podLabels);
+};
+
+var getPodLabelCollection = function(str) {
+  var labels = str.split(',');
   for (var i in labels) {
     var keyAndValue = labels[i].split('=');
     labels[i] = {
@@ -116,6 +132,8 @@ module.exports = {
   env: process.env.NODE_ENV || 'local',
   mongoPodLabels: getMongoPodLabels(),
   mongoPodLabelCollection: getMongoPodLabelCollection(),
+  mongoHiddenPodLabels: getMongoHiddenPodLabels(),
+  mongoHiddenPodLabelCollection: getMongoHiddenPodLabelCollection(),
   k8sROServiceAddress: getk8sROServiceAddress(),
   k8sMongoServiceName: getK8sMongoServiceName(),
   k8sClusterDomain: getK8sClusterDomain(),
