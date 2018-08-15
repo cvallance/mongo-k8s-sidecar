@@ -12,6 +12,11 @@
 # limitations under the License.
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mongo-sidecar
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: mongo
@@ -38,6 +43,7 @@ spec:
         role: mongo
         environment: test
     spec:
+      serviceAccountName: mongo-sidecar
       terminationGracePeriodSeconds: 10
       containers:
         - name: mongo
@@ -70,3 +76,26 @@ spec:
       resources:
         requests:
           storage: 2Gi
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: list-pods-role
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods"]
+  verbs: ["list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: list-pods-binding
+  namespace: default
+subjects:
+- kind: User
+  name: system:serviceaccount:default:mongo-sidecar
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: list-pods-role
+  apiGroup: rbac.authorization.k8s.io
