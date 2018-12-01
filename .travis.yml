@@ -46,7 +46,7 @@ script:
   - kubectl cluster-info
 
   # Setup a clusterrole binding, so the sidecar can actually query clusterwide
-  - kubectl create clusterrolebinding default-admin --clusterrole cluster-admin --servicaccount=default:default
+  - kubectl create clusterrolebinding default-admin --clusterrole cluster-admin --serviceaccount=default:default
 
   # Create the minikube storageclass
   - kubectl create -f example/StatefulSet/minikube_hostpath.yaml
