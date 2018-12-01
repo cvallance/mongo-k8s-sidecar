@@ -72,7 +72,7 @@ script:
   - echo "Remote connection established!"
 
   # Verify that mongodb is clustered with 3 nodes
-  - until kubectl exec -it mongo-0 -- mongo --eval "print('member_count=' + rs.status().members.length)" 2>&1 | grep -q "member_count=3"; do sleep 10; echo "waiting for mongodb to be clustered"; kubectl exec -it mongo-0 -- mongo --eval "rs.status()"; kubectl logs mongo-0 mongo-sidecar --tail 50; done
+  - until kubectl exec -it mongo-0 -- mongo --eval "print('member_count=' + rs.status().members.filter(obj => (obj.state == 1) || (obj.state == 2)).length)" 2>&1 | grep -q "member_count=3"; do sleep 10; echo "waiting for mongodb to be clustered"; kubectl exec -it mongo-0 -- mongo --eval "rs.status()"; kubectl logs mongo-0 mongo-sidecar --tail 50; done
   # Verify that cluster status is 'ok'
   - until kubectl exec -it mongo-0 -- mongo --eval "print('cluster_status=' + rs.status().ok)" 2>&1 | grep -q "cluster_status=1"; do sleep 10; echo "waiting for mongodb cluster to be 'ok'"; kubectl exec -it mongo-0 -- mongo --eval "rs.status()"; kubectl logs mongo-0 mongo-sidecar --tail 50; done
   - kubectl exec -it mongo-0 -- mongo --eval "rs.status()"
