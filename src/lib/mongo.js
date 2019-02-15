@@ -1,5 +1,5 @@
 var Db = require('mongodb').Db;
-var MongoServer = require('mongodb').Server;
+var MongoClient = require('mongodb').MongoClient;
 var async = require('async');
 var config = require('./config');
 
@@ -24,29 +24,19 @@ var getDb = function(host, done) {
       ssl: config.mongoSSLEnabled,
       sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
       sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
-    }
+    };
   }
-
-  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
-
-  mongoDb.open(function (err, db) {
-    if (err) {
-      return done(err);
-    }
-
-    if(config.username) {
-        mongoDb.authenticate(config.username, config.password, function(err, result) {
-            if (err) {
-              return done(err);
-            }
-
-            return done(null, db);
-        });
-    } else {
-      return done(null, db);
-    }
-
-  });
+    console.log(host);
+    let base = host.toString() + ":"+config.mongoPort;
+    let auth = "mongodb://" +config.username +":"+config.password +"@"+base;
+    let open = "mongodb://" + base;
+    let result = config.username ? auth : open;
+    MongoClient.connect(result, function(err, mongoClient) {
+        if (err) {
+            return done(err);
+        }
+	return done(null, mongoClient.db(config.database));
+    });
 };
 
 var replSetGetConfig = function(db, done) {

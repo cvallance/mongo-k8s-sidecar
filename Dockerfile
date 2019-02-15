@@ -10,4 +10,5 @@ RUN npm install
 COPY ./src /opt/cvallance/mongo-k8s-sidecar/src
 COPY .foreverignore /opt/cvallance/.foreverignore
 
+EXPOSE 27017
 CMD ["npm", "start"]
