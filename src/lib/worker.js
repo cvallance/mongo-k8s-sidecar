@@ -52,7 +52,7 @@ var workloop = function workloop() {
     //Lets remove any pods that aren't running or haven't been assigned an IP address yet
     for (var i = pods.length - 1; i >= 0; i--) {
       var pod = pods[i];
-      if (pod.status.phase !== 'Running' || !pod.status.podIP) {
+      if (pod.status.phase !== 'Running' || !pod.status.podIP || pod.status.reason === 'NodeLost') {
         pods.splice(i, 1);
       }
     }
@@ -111,7 +111,7 @@ var inReplicaSet = function(db, pods, status, done) {
   for (var i in members) {
     var member = members[i];
 
-    if (member.state === 1) {
+    if (member.state === 1 && podIsAlive(member, pods)) {
       if (member.self) {
         return primaryWork(db, pods, members, false, done);
       }
@@ -232,9 +232,6 @@ var addrToAddLoop = function(pods, members) {
   var addrToAdd = [];
   for (var i in pods) {
     var pod = pods[i];
-    if (pod.status.phase !== 'Running') {
-      continue;
-    }
 
     var podIpAddr = getPodIpAddressAndPort(pod);
     var podStableNetworkAddr = getPodStableNetworkAddressAndPort(pod);
@@ -274,6 +271,11 @@ var memberShouldBeRemoved = function(member) {
     return !member.health
         && moment().subtract(unhealthySeconds, 'seconds').isAfter(member.lastHeartbeatRecv);
 };
+
+var podIsAlive = function(member, pods) {
+  return pods.some(p => getPodIpAddressAndPort(p) == member.name 
+    || getPodStableNetworkAddressAndPort(p) == member.name)
+}
 
 /**
  * @param pod this is the Kubernetes pod, containing the info.
