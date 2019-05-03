@@ -18,7 +18,7 @@ There you will also find some helper scripts to test out creating the replica se
 | Environment Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | KUBE_NAMESPACE | NO |  | The namespace to look up pods in. Not setting it will search for pods in all namespaces. |
-| MONGO_SIDECAR_POD_LABELS | YES |  | This should be a be a comma separated list of key values the same as the podTemplate labels. See above for example. |
+| MONGO_SIDECAR_POD_LABELS | YES |  | This should be a comma separated list of key values the same as the podTemplate labels. See above for example. |
 | MONGO_SIDECAR_SLEEP_SECONDS | NO | 5 | This is how long to sleep between work cycles. |
 | MONGO_SIDECAR_UNHEALTHY_SECONDS | NO | 15 | This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set. |
 | MONGO_PORT | NO | 27017 | Configures the mongo port, allows the usage of non-standard ports. |
