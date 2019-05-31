@@ -28,8 +28,8 @@ var getDb = function(host, done) {
   }
 
   var connectionURI;
-  if(config.username) {
-    connectionURI = `mongodb://${config.username}:${config.password}@${host}:${config.mongoPort}/${config.database}`;
+  if (config.username) {
+    connectionURI = `mongodb://${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@${host}:${config.mongoPort}/${config.database}`;
   } else {
     connectionURI = `mongodb://${host}:${config.mongoPort}/${config.database}`;
   }
