@@ -93,3 +93,10 @@ Put these in your connection url. For example:
 ```
 mongodb://mongo-0.mongo,mongo-1.mongo,mongo-2.mongo:27017/dbname_?'
 ```
+
+## RBAC Role
+If you are running Kubernetes using RBAC, you will likely need to create a role with permission to list pods. The _role.yaml_ file contains an example role and binding which grants the necessary permissions to the default service account in the "mongo" namespace. Update as needed for your environment.
+
+```
+kubectl apply -f role.yaml
+```
