@@ -232,7 +232,7 @@ var addrToAddLoop = function(pods, members) {
   var addrToAdd = [];
   for (var i in pods) {
     var pod = pods[i];
-    if (pod.status.phase !== 'Running') {
+    if (pod.status.phase !== 'Running' || pod.status.reason === 'NodeLost') {
       continue;
     }
 
