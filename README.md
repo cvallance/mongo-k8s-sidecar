@@ -31,6 +31,7 @@ There you will also find some helper scripts to test out creating the replica se
 | MONGO_SSL_ENABLED | NO | false | Enable SSL for MongoDB. |
 | MONGO_SSL_ALLOW_INVALID_CERTIFICATES | NO | true | This should be set to true if you want to use self signed certificates. |
 | MONGO_SSL_ALLOW_INVALID_HOSTNAMES | NO | true | This should be set to true if your certificates FQDN's do not match the host name set in your replset. |
+| MONGO_DISCOVERY_BY_DNS | NO | true | If this is true，sidecar finds all mongods by lookup the service's domain name, otherwise by call k8s apiserver's api. |
 
 In its default configuration the sidecar uses the pods' IPs for the MongodDB replica names. Here is a trimmed example:
 ```
