@@ -52,7 +52,7 @@ var workloop = function workloop() {
     //Lets remove any pods that aren't running or haven't been assigned an IP address yet
     for (var i = pods.length - 1; i >= 0; i--) {
       var pod = pods[i];
-      if (pod.status.phase !== 'Running' || !pod.status.podIP) {
+      if (pod.status.phase !== 'Running' || pod.metadata.deletionTimestamp || !pod.status.podIP) {
         pods.splice(i, 1);
       }
     }
