@@ -58,7 +58,7 @@ var workloop = function workloop() {
     }
 
     if (!pods.length) {
-      return finish('No pods are currently running, probably just give them some time.');
+      return finish('No pods are currently running, probably just give them some time.', db);
     }
 
     //Lets try and get the rs status for this mongo instance
