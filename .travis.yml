@@ -1,0 +1,83 @@
+language: bash
+
+branches:
+  only:
+    - master
+
+sudo: required
+
+# We need the systemd for the kubeadm and it's default from 16.04+
+dist: xenial
+
+# This moves Kubernetes specific config files.
+env:
+  - CHANGE_MINIKUBE_NONE_USER=true
+
+before_script:
+  # Make root mounted as rshared to fix kube-dns issues.
+  - sudo mount --make-rshared /
+
+  # Install kubectl, which is a requirement for using minikube.
+  - sudo apt-get update
+  - sudo apt-get install -y apt-transport-https
+  - curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+  - echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
+  - sudo apt-get update
+  - sudo apt-get install -y kubectl
+
+  # Download and install minikube
+  - curl -Lo minikube https://github.com/kubernetes/minikube/releases/download/v0.30.0/minikube_0.30-0.deb
+  - sudo dpkg -i minikube
+
+  # Start a local minikube
+  - sudo minikube start --vm-driver=none --bootstrapper=kubeadm --kubernetes-version=v1.12.0
+  # Fix the kubectl context, as it's often stale.
+  - minikube update-context
+
+  # Wait for Kubernetes to be up and ready.
+  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 10; done
+  # Wait for kube-addon-manager to be ready.
+  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl -n kube-system get pods -lcomponent=kube-addon-manager -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 10; echo "waiting for kube-addon-manager to be available"; kubectl get pods --all-namespaces; done
+  # Wait for kube-dns to be ready.
+  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl -n kube-system get pods -lk8s-app=kube-dns -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 10; echo "waiting for kube-dns to be available"; kubectl get pods --all-namespaces; done
+
+script:
+  # Debug print cluster information
+  - kubectl cluster-info
+
+  # Setup a clusterrole binding, so the sidecar can actually query clusterwide
+  - kubectl create clusterrolebinding default-admin --clusterrole cluster-admin --serviceaccount=default:default
+
+  # Create the minikube storageclass
+  - kubectl create -f example/StatefulSet/minikube_hostpath.yaml
+  # Verify that the storageclass is created
+  - JSONPATH='{range .items[*]}{@.metadata.name}{"\n"}{end}'; until kubectl -n default get storageclass -o jsonpath="$JSONPATH" 2>&1 | grep -q "fast"; do sleep 10; echo "waiting for storageclass to be available"; kubectl get storageclass -n default; done
+
+  # Creating the stateful set
+  - kubectl create -f example/StatefulSet/mongo-statefulset.yaml
+  # Verify that the stateful set was created
+  - until kubectl -n default get statefulset 2>&1 | grep "mongo" | awk '{ print $2 == $3 }' | grep -q "1"; do sleep 10; echo "waiting for statefulset to be available"; kubectl get statefulset -n default; done
+  # Make sure created pod is scheduled and running.
+  - JSONPATH='{range .items[*]}{@.metadata.name}{range @.status.conditions[?(@.type=="Ready")]};{@.status}:{end}{end}'; until kubectl -n default get pods -o jsonpath="$JSONPATH" 2>&1 | grep -q "mongo-0;True"; do sleep 10; echo "waiting for mongo-0 to be available"; kubectl get pods -n default; done
+  - JSONPATH='{range .items[*]}{@.metadata.name}{range @.status.conditions[?(@.type=="Ready")]};{@.status}:{end}{end}'; until kubectl -n default get pods -o jsonpath="$JSONPATH" 2>&1 | grep -q "mongo-1;True"; do sleep 10; echo "waiting for mongo-1 to be available"; kubectl get pods -n default; done
+  - JSONPATH='{range .items[*]}{@.metadata.name}{range @.status.conditions[?(@.type=="Ready")]};{@.status}:{end}{end}'; until kubectl -n default get pods -o jsonpath="$JSONPATH" 2>&1 | grep -q "mongo-2;True"; do sleep 10; echo "waiting for mongo-2 to be available"; kubectl get pods -n default; done
+  - echo "All pods are running!"
+
+  # Verify that mongodb is ok
+  - until kubectl exec -it mongo-0 -- mongo --eval "print('CONNECTION OK')" 2>&1 | grep -q "CONNECTION OK"; do sleep 10; echo "waiting for mongodb connection"; done
+  - echo "Connection established!"
+
+  # Verify that mongdb is reachable from the outside
+  - until kubectl run --rm -it --restart=Never mongo-tester --image=mongo:3.4 -- mongo mongodb://mongo-1.mongo:27017/ --eval "print('REMOTE CONNECTION OK')" 2>&1 | grep -q "REMOTE CONNECTION OK"; do sleep 10; echo "waiting for mongodb (remote) to report 'ok'"; done
+  - echo "Remote connection established!"
+
+  # Verify that mongodb is clustered with 3 nodes
+  - until kubectl exec -it mongo-0 -- mongo --eval "print('member_count=' + rs.status().members.filter(obj => (obj.state == 1) || (obj.state == 2)).length)" 2>&1 | grep -q "member_count=3"; do sleep 10; echo "waiting for mongodb to be clustered"; kubectl exec -it mongo-0 -- mongo --eval "rs.status()"; kubectl logs mongo-0 mongo-sidecar --tail 50; done
+  # Verify that cluster status is 'ok'
+  - until kubectl exec -it mongo-0 -- mongo --eval "print('cluster_status=' + rs.status().ok)" 2>&1 | grep -q "cluster_status=1"; do sleep 10; echo "waiting for mongodb cluster to be 'ok'"; kubectl exec -it mongo-0 -- mongo --eval "rs.status()"; kubectl logs mongo-0 mongo-sidecar --tail 50; done
+  - kubectl exec -it mongo-0 -- mongo --eval "rs.status()"
+  - echo "Cluster configured and OK!"
+
+  # Clean up
+  - kubectl delete -f example/StatefulSet/mongo-statefulset.yaml
+  - kubectl delete -f example/StatefulSet/minikube_hostpath.yaml

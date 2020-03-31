@@ -1,5 +1,7 @@
 # Mongo Kubernetes Replica Set Sidecar
 
+[![Build Status](https://travis-ci.com/cvallance/mongo-k8s-sidecar.svg?branch=master)](https://travis-ci.com/cvallance/mongo-k8s-sidecar)
+
 This project is as a PoC to setup a mongo replica set using Kubernetes. It should handle resizing of any type and be
 resilient to the various conditions both mongo and kubernetes can find themselves in.
 
