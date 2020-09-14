@@ -30,6 +30,10 @@ kind: StatefulSet
 metadata:
   name: mongo
 spec:
+  selector:
+    matchLabels:
+      role: mongo
+      environment: test
   serviceName: "mongo"
   replicas: 3
   template:
