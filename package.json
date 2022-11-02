@@ -29,11 +29,11 @@
   "homepage": "https://github.com/cvallance/mongo-k8s-sidecar",
   "devDependencies": {
     "chai": "^2.3.0",
-    "mocha": "^2.2.4"
+    "mocha": "^10.1.0"
   },
   "dependencies": {
     "async": "^1.5.0",
-    "forever": "^0.14.1",
+    "forever": "^4.0.3",
     "ip": "^0.3.2",
     "moment": "^2.10.2",
     "mongodb": "^2.0.28",
