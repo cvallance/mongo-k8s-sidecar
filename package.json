@@ -28,16 +28,16 @@
   },
   "homepage": "https://github.com/shantanuabansal/mongo-k8s-sidecar",
   "devDependencies": {
-    "chai": "^2.3.0",
-    "mocha": "^2.2.4"
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
   },
   "dependencies": {
-    "async": "^1.5.0",
-    "forever": "^0.14.1",
-    "ip": "^0.3.2",
-    "moment": "^2.10.2",
-    "mongodb": "^2.0.28",
-    "node-kubernetes-client": "^0.2.2",
-    "pem": "^1.9.4"
+    "async": "^3.2.4",
+    "forever": "^4.0.3",
+    "ip": "^1.1.8",
+    "moment": "^2.29.4",
+    "mongodb": "^4.4.1",
+    "node-kubernetes-client": "^0.3.2",
+    "pem": "^1.14.6"
   }
 }
