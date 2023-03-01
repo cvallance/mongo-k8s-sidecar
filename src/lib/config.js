@@ -1,4 +1,5 @@
 var dns = require('dns');
+// import dns from "dns";
 
 var getMongoPodLabels = function() {
   return process.env.MONGO_SIDECAR_POD_LABELS || false;
