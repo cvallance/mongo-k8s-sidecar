@@ -1,13 +1,13 @@
 FROM node:alpine
 MAINTAINER Charles Vallance <vallance.charles@gmail.com>
 
-WORKDIR /opt/shantanubansal/mongo-k8s-sidecar
+WORKDIR /
 
-COPY package.json /opt/shantanuabansal/mongo-k8s-sidecar/package.json
+COPY package.json package.json
 
 RUN npm install
 
-COPY ./src /opt/shantanuabansal/mongo-k8s-sidecar/src
-COPY .foreverignore /opt/shantanuabansal/.foreverignore
+COPY ./src /src
+COPY .foreverignore .foreverignore
 
 CMD ["npm", "start"]
