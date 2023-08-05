@@ -6,7 +6,6 @@ var config = require("./config");
 var localhost = "127.0.0.1"; //Can access mongo as localhost from a sidecar
 
 var getDb = function (host, done) {
-  console.log("🚀 ~ file: mongo.js:9 ~ getDb ~ host:", host);
   //If they called without host like getDb(function(err, db) { ... });
   if (arguments.length === 1) {
     if (typeof arguments[0] === "function") {
@@ -21,7 +20,6 @@ var getDb = function (host, done) {
 
   var mongoOptions = {};
   host = host || localhost;
-  console.log("🚀 ~ file: mongo.js:21 ~ getDb ~ host:", host);
 
   if (config.mongoSSLEnabled) {
     mongoOptions = {
@@ -37,7 +35,6 @@ var getDb = function (host, done) {
   );
 
   mongoDb.open(function (err, db) {
-    console.log("🚀 ~ file: mongo.js:33 ~ err:", err);
     if (err) {
       return done(err);
     }
@@ -48,10 +45,6 @@ var getDb = function (host, done) {
         config.password,
         function (err, result) {
           if (err) {
-            console.log(
-              "🚀 ~ file: mongo.js:40 ~ mongoDb.authenticate ~ err:",
-              err
-            );
             return done(err);
           }
 
@@ -147,16 +140,23 @@ var addNewReplSetMembers = function (
     if (err) {
       return done(err);
     }
-
     removeDeadMembers(rsConfig, addrToRemove);
-
-    addNewMembers(rsConfig, addrToAdd);
-
-    replSetReconfig(db, rsConfig, shouldForce, done);
+    console.log("🚀 ~ file: mongo.js:152 ~ shouldForce:", shouldForce);
+    if (!!shouldForce) {
+      addNewMembers(rsConfig, addrToAdd);
+      replSetReconfig(db, rsConfig, shouldForce, done);
+    } else {
+      addNewMembers(rsConfig, addrToAdd, {
+        shouldApplyReplicaSetReconfig: true,
+        db,
+        shouldForce,
+        done,
+      });
+    }
   });
 };
 
-var addNewMembers = function (rsConfig, addrsToAdd) {
+var addNewMembers = function (rsConfig, addrsToAdd, options) {
   if (!addrsToAdd || !addrsToAdd.length) return;
 
   var memberIds = [];
@@ -204,6 +204,14 @@ var addNewMembers = function (rsConfig, addrsToAdd) {
     };
 
     rsConfig.members.push(cfg);
+    if (!!options) {
+      replSetReconfig(
+        options?.db,
+        rsConfig,
+        options?.shouldForce,
+        options.done
+      );
+    }
   }
 };
 
