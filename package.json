@@ -33,12 +33,10 @@
     "mocha": "^2.2.4"
   },
   "dependencies": {
-    "async": "^1.5.0",
+    "@kubernetes/client-node": "^0.20.0",
     "forever": "^0.14.1",
-    "ip": "^0.3.2",
     "moment": "^2.10.2",
     "mongodb": "^6.3.0",
-    "node-kubernetes-client": "^0.2.2",
     "pem": "^1.9.4"
   }
 }

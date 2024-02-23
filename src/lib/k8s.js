@@ -1,47 +1,24 @@
-var Client = require('node-kubernetes-client');
+const k8s = require('@kubernetes/client-node');
 var config = require('./config');
 var util = require("util");
 
 fs = require('fs');
 
-var readToken = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token');
+// Nasty hack to allow intermediate cluster certs 
+// TODO: make this a config option (--insecure) and/or provide anchor for cluster 
+// root certificates
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-var client = new Client({
-  host: config.k8sROServiceAddress,
-  namespace: config.namespace,
-  protocol: 'https',
-  version: 'v1',
-  token: readToken
-});
+const kc = new k8s.KubeConfig()
+kc.loadFromCluster()
+const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
 var getMongoPods = async function getPods() {
-  return new Promise( (resolve,reject) => {
-    client.pods.get(function (err, podResult) {
-      
-      if (err) {
-        reject(err)
-        return
-      }
- 
-      var pods = podResult[0].items
-      var labels = config.mongoPodLabelCollection;
-      var results = pods.filter((pod) => podContainsLabels(pod, labels));
-      resolve(results)  
-    })
-  })
-};
 
-var podContainsLabels = function podContainsLabels(pod, labels) {
-  if (!pod.metadata || !pod.metadata.labels) return false;
-
-  for (var i in labels) {
-    var kvp = labels[i];
-    if (!pod.metadata.labels[kvp.key] || pod.metadata.labels[kvp.key] != kvp.value) {
-      return false;
-    }
-  }
-
-  return true;
+  const podRes = await k8sApi.listNamespacedPod(config.namespace, false, null, null, 
+    null, process.env.MONGO_SIDECAR_POD_LABELS
+  );
+  return podRes.body.items
 };
 
 module.exports = {
