@@ -1,130 +1,93 @@
-var Db = require('mongodb').Db;
-var MongoServer = require('mongodb').Server;
+const { MongoClient } = require('mongodb');
 var async = require('async');
 var config = require('./config');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
-var getDb = function(host, done) {
+var getDb = function(host) {
   //If they called without host like getDb(function(err, db) { ... });
-  if (arguments.length === 1) {
-    if (typeof arguments[0] === 'function') {
-      done = arguments[0];
-      host = localhost;
-    } else {
-      throw new Error('getDb illegal invocation. User either getDb(\'options\', function(err, db) { ... }) OR getDb(function(err, db) { ... })');
-    }
-  }
 
-  var mongoOptions = {};
+  var mongoOptions = {replicaSet: "rs0",directConnection: true};
   host = host || localhost;
 
   if (config.mongoSSLEnabled) {
     mongoOptions = {
       ssl: config.mongoSSLEnabled,
-      sslAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
-      sslAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames
+      tlsAllowInvalidCertificates: config.mongoSSLAllowInvalidCertificates,
+      tlsAllowInvalidHostnames: config.mongoSSLAllowInvalidHostnames,
+      replicaSet: "rs0"
     }
   }
 
-  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
+  const uri = (config.username) ?
+    `mongodb://${config.username}:${config.password}@${host}:${config.mongoPort}/?authSource=${config.database}` :
+    `mongodb://${host}:${config.mongoPort}/?directConnection=true`;
 
-  mongoDb.open(function (err, db) {
-    if (err) {
-      return done(err);
-    }
 
-    if(config.username) {
-        mongoDb.authenticate(config.username, config.password, function(err, result) {
-            if (err) {
-              return done(err);
-            }
+  var client = new MongoClient(uri, mongoOptions);
+  var mongoDb = client.db(config.database);
+  
+  return {db : mongoDb, close : () => {client.close()}}
+}
+//   mongoDb.open(function (err, db) {
+//     if (err) {
+//       return done(err);
+//     }
 
-            return done(null, db);
-        });
-    } else {
-      return done(null, db);
-    }
+//     if(config.username) {
+//         mongoDb.authenticate(config.username, config.password, function(err, result) {
+//             if (err) {
+//               return done(err);
+//             }
 
-  });
+//             return done(null, db);
+//         });
+//     } else {
+//       return done(null, db);
+//     }
+
+//   });
+// };
+
+var replSetGetConfig = async function(db) {
+  const result = await db.admin().command({ replSetGetConfig: 1 } )
+  return result.config;
 };
 
-var replSetGetConfig = function(db, done) {
-  db.admin().command({ replSetGetConfig: 1 }, {}, function (err, results) {
-    if (err) {
-      return done(err);
-    }
+var replSetGetStatus = async function(db) {
+  result = db.admin().command({ replSetGetStatus: {} } )
+  return result;
+}
 
-    return done(null, results.config);
-  });
-};
+var initReplSet = async function(db, hostIpAndPort) {
+  console.trace('initReplSet', hostIpAndPort);
 
-var replSetGetStatus = function(db, done) {
-  db.admin().command({ replSetGetStatus: {} }, {}, function (err, results) {
-    if (err) {
-      return done(err);
-    }
+  return db.admin().command({ replSetInitiate: { _id: "rs0", members: [ {_id:0, host: hostIpAndPort} ]} } )
 
-    return done(null, results);
-  });
-};
+  //We need to hack in the fix where the host is set to the hostname which isn't reachable from other hosts
+  // var rsConfig = await replSetGetConfig(db)
 
-var initReplSet = function(db, hostIpAndPort, done) {
-  console.log('initReplSet', hostIpAndPort);
+  // console.debug('initial rsConfig is', rsConfig);
+  // rsConfig.configsvr = config.isConfigRS;
+  // rsConfig.members[0].host = hostIpAndPort;
+  // return async.retry({times: 20, interval: 500}, replSetReconfig(db, rsConfig, false) )
+}
 
-  db.admin().command({ replSetInitiate: {} }, {}, function (err) {
-    if (err) {
-      return done(err);
-    }
-
-    //We need to hack in the fix where the host is set to the hostname which isn't reachable from other hosts
-    replSetGetConfig(db, function(err, rsConfig) {
-      if (err) {
-        return done(err);
-      }
-
-      console.log('initial rsConfig is', rsConfig);
-      rsConfig.configsvr = config.isConfigRS;
-      rsConfig.members[0].host = hostIpAndPort;
-      async.retry({times: 20, interval: 500}, function(callback) {
-        replSetReconfig(db, rsConfig, false, callback);
-      }, function(err, results) {
-        if (err) {
-          return done(err);
-        }
-
-        return done();
-      });
-    });
-  });
-};
-
-var replSetReconfig = function(db, rsConfig, force, done) {
+var replSetReconfig = async function(db, rsConfig, force) {
   console.log('replSetReconfig', rsConfig);
 
   rsConfig.version++;
 
-  db.admin().command({ replSetReconfig: rsConfig, force: force }, {}, function (err) {
-    if (err) {
-      return done(err);
-    }
-
-    return done();
-  });
+  return db.admin().command({ replSetReconfig: rsConfig, force: force }, {})
 };
 
-var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, done) {
-  replSetGetConfig(db, function(err, rsConfig) {
-    if (err) {
-      return done(err);
-    }
+var addNewReplSetMembers = async function(db, addrToAdd, addrToRemove, shouldForce) {
+  rsConfig = await replSetGetConfig(db)
 
-    removeDeadMembers(rsConfig, addrToRemove);
+  removeDeadMembers(rsConfig, addrToRemove);
+  addNewMembers(rsConfig, addrToAdd);
 
-    addNewMembers(rsConfig, addrToAdd);
-
-    replSetReconfig(db, rsConfig, shouldForce, done);
-  });
+  return replSetReconfig(db, rsConfig, shouldForce);
 };
 
 var addNewMembers = function(rsConfig, addrsToAdd) {
@@ -190,22 +153,18 @@ var removeDeadMembers = function(rsConfig, addrsToRemove) {
   }
 };
 
-var isInReplSet = function(ip, done) {
-  getDb(ip, function(err, db) {
-    if (err) {
-      return done(err);
+var isInReplSet = async function(ip) {
+  var {db,close} = getDb(ip)
+  try {
+    rsConfig = await replSetGetConfig(db)
+    return true
+  } catch {
+    return false
+  } finally {
+    if (db && close) {
+      close()
     }
-
-    replSetGetConfig(db, function(err, rsConfig) {
-      db.close();
-      if (!err && rsConfig) {
-        done(null, true);
-      }
-      else {
-        done(null, false);
-      }
-    });
-  });
+  }
 };
 
 module.exports = {

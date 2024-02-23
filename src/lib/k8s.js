@@ -14,26 +14,21 @@ var client = new Client({
   token: readToken
 });
 
-var getMongoPods = function getPods(done) {
-  client.pods.get(function (err, podResult) {
-    if (err) {
-      return done(err);
-    }
-    var pods = [];
-    for (var j in podResult) {
-      pods = pods.concat(podResult[j].items)
-    }
-    var labels = config.mongoPodLabelCollection;
-    var results = [];
-    for (var i in pods) {
-      var pod = pods[i];
-      if (podContainsLabels(pod, labels)) {
-        results.push(pod);
+var getMongoPods = async function getPods() {
+  return new Promise( (resolve,reject) => {
+    client.pods.get(function (err, podResult) {
+      
+      if (err) {
+        reject(err)
+        return
       }
-    }
-
-    done(null, results);
-  });
+ 
+      var pods = podResult[0].items
+      var labels = config.mongoPodLabelCollection;
+      var results = pods.filter((pod) => podContainsLabels(pod, labels));
+      resolve(results)  
+    })
+  })
 };
 
 var podContainsLabels = function podContainsLabels(pod, labels) {
