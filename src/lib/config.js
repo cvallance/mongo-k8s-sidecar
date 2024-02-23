@@ -9,7 +9,7 @@ var getMongoPodLabelCollection = function() {
   if (!podLabels) {
     return false;
   }
-  console.log("Pod label selectors:")
+
   var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
   for (var i in labels) {
     var keyAndValue = labels[i].split('=');
@@ -17,7 +17,6 @@ var getMongoPodLabelCollection = function() {
       key: keyAndValue[0],
       value: keyAndValue[1]
     };
-    console.log(labels[i])
   }
   
   return labels;

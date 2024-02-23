@@ -1,5 +1,4 @@
 const { MongoClient } = require('mongodb');
-var async = require('async');
 var config = require('./config');
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
@@ -74,7 +73,7 @@ var initReplSet = async function(db, hostIpAndPort) {
 }
 
 var replSetReconfig = async function(db, rsConfig, force) {
-  console.log('replSetReconfig', rsConfig);
+  console.trace('replSetReconfig', rsConfig);
 
   rsConfig.version++;
 

@@ -54,13 +54,14 @@ var workloop = async function workloop() {
     //If we get a specific error, it means they aren't in the rs
     
     try {
-      console.debug("Attempting to obtain replica set status from local host")
+      console.debug("Checking MongoDB replica set status")
       var status = await mongo.replSetGetStatus(db)
       console.debug("=> Result: Already part of the replica set")
+      
       await inReplicaSet(db, pods, status);
     } catch (err) {
       try {
-        console.log("Attempting to obtain replica set status from local host failes")
+        console.log("Checking MongoDB replica set status failed")
         if (err.code && err.code == 94) {
           console.log("=> Reason: Not in replica set")
           console.log("Starting reconciliation attempt")
@@ -194,7 +195,7 @@ var podElection = function(pods) {
   //Are we the lucky one?
   console.log(pods.map(p => p.status.podIP))
   console.log(`Host IP: ${hostIps}`)
-  return hostIps.any( ip => pods[0].status.podIP == ip);
+  return hostIps.some( ip => pods[0].status.podIP == ip);
 };
 
 var addrToAddLoop = function(pods, members) {
