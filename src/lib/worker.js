@@ -2,6 +2,7 @@ import mongo from './mongo.js';
 import k8s from './k8s.js';
 import config from './config.js';
 import moment from 'moment';
+import logger from './logging.js';
 
 import dns from 'dns';
 import os from 'os';
@@ -13,23 +14,26 @@ var hostIps = false;
 var hostIpAndPort = false;
 
 var init = function(done) {
+
   //Borrowed from here: http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
   var hostName = os.hostname();
-  console.log(`Hostname: ${hostName}`)
+
   dns.lookup(hostName, {all: true}, function (err, addr) {
     if (err) {
       return done(err);
     }
 
-    hostIps = addr.map( a => a.address);
+    hostIps = addr.map( a => a.address );
     hostIpAndPort = hostIps[0] + ':' + config.mongoPort;
-    console.log(`Pod IP: ${hostIps}`)
+
+    logger.log({hostname: hostName, podIPs: hostIps}, 'finished initialising')
     done();
   });
 };
 
 var workloop = async function workloop() {
   if (!hostIps || !hostIpAndPort) {
+    logger.fatal('Must initialize with the host machine\'s addr')
     throw new Error('Must initialize with the host machine\'s addr');
   }
   
@@ -46,7 +50,7 @@ var workloop = async function workloop() {
     }
 
     if (!pods.length) {
-      console.log('No pods are currently running, probably just give them some time.');
+      logger.log('No pods are currently running, probably just give them some time.');
       return
     }
 
@@ -55,35 +59,34 @@ var workloop = async function workloop() {
     //If we get a specific error, it means they aren't in the rs
     
     try {
-      console.debug("Checking MongoDB replica set status")
+      logger.debug("Checking MongoDB replica set status")
       var status = await mongo.replSetGetStatus(db)
-      console.debug("=> Result: Already part of the replica set")
+      logger.info({rs: status.set, host: status.members.filter( s => s.self)[0].name}, "Already part of the replica set");
       
       await inReplicaSet(db, pods, status);
     } catch (err) {
       try {
-        console.log("Checking MongoDB replica set status failed")
         if (err.code && err.code == 94) {
-          console.log("=> Reason: Not in replica set")
-          console.log("Starting reconciliation attempt")
+          logger.debug({reason: "not in replica set"}, "Checking MongoDB replica set status failed")
+          logger.debug("Starting reconciliation attempt")
           await notInReplicaSet(db, pods);
-          console.log("Finished reconsiliation")
+          logger.debug("Finished reconsiliation")
         }
         else if (err.code && err.code == 93) {
-          console.log("=> Reason: Invalid replica set")
-          console.log("Starting reconciliation attempt")
+          logger.error({reason: "invalid replica set"}, "Checking MongoDB replica set status failed")
+          logger.debug("Starting reconciliation attempt")
           await invalidReplicaSet(db, pods, status);
-          console.log("Finished reconsiliation")
+          logger.debug("Finished reconsiliation")
         }
         else {
-          console.error("=> ERROR: Obtaining replica set status", err)
+          logger.error(err, "Obtaining replica set status failed")
         }
         } catch (errr) {
-          console.error('Error in workloop', errr);
+          logger.error(errr, 'Error in workloop');
       }
     }
   } catch (errrr) {
-    console.error("ERROR in workloop", errrr)
+    logger.error(errrr, "ERROR in workloop")
   
   } finally {
     if (db && close) {
@@ -114,7 +117,7 @@ var inReplicaSet = async function(db, pods, status) {
   }
 
   if (!primaryExists && podElection(pods)) {
-    console.log('Pod has been elected as a secondary to do primary work');
+    logger.log('Pod has been elected as a secondary to do primary work');
     return primaryWork(db, pods, members, true);
   }
 };
@@ -128,9 +131,7 @@ var primaryWork = async function(db, pods, members, shouldForce) {
   var addrToRemove = addrToRemoveLoop(members);
 
   if (addrToAdd.length || addrToRemove.length) {
-    console.log('Addresses to add:    ', addrToAdd);
-    console.log('Addresses to remove: ', addrToRemove);
-
+    logger.info({addrToAdd: addrToAdd, addrToRemove: addrToRemove}, "Updating replica set membership")
     await mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, shouldForce);
     
   }
@@ -150,20 +151,20 @@ var notInReplicaSet = async function(db, pods) {
 
   let inReplSet = await Promise.all(testRequests)
   if (inReplSet.some((r)=>r)) {
-    console.log("=> Some other pod is already part of the replica set. Nothing to do.")
+    logger.log("Some other pod is already part of the replica set. Nothing to do.")
     return
   }
   
   if (podElection(pods)) {
-    console.log('=> Pod has been elected for replica set initialization');
+    logger.log('Pod has been elected for replica set initialization');
     var primary = pods[0]; // After the sort election, the 0-th pod should be the primary.
     var primaryStableNetworkAddressAndPort = getPodStableNetworkAddressAndPort(primary);
     // Prefer the stable network ID over the pod IP, if present.
     var primaryAddressAndPort = primaryStableNetworkAddressAndPort || hostIpAndPort;
-    console.log("=> Start initialising replicate set")
+    logger.log({primary: primaryAddressAndPort}, "Start initialising replicate set")
     return mongo.initReplSet(db, primaryAddressAndPort);
   } else {
-    console.log('=> Pod has not been elected for replica set initialization');
+    logger.log('Pod has not been elected for replica set initialization');
   }
 
 };
@@ -178,14 +179,15 @@ var invalidReplicaSet = async function(db, pods, status) {
   }
 
   if (!podElection(pods)) {
-    console.log("=> Didn't win the pod election, doing nothing");
+    logger.debug("Didn't win the pod election, doing nothing");
     return
   }
 
-  console.log("=> Won the pod election, forcing re-initialization");
+  logger.log("Won the pod election, forcing re-initialization");
   var addrToAdd = addrToAddLoop(pods, members);
   var addrToRemove = addrToRemoveLoop(members);
 
+  logger.info({addrToAdd: addrToAdd, addrToRemove: addrToRemove}, "Updating replica set membership")
   return mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, true);
 };
 
@@ -195,8 +197,6 @@ var podElection = function(pods) {
   pods.sort((a,b) => a.status.podIP.localeCompare(b.status.podIP));
 
   //Are we the lucky one?
-  console.log(pods.map(p => p.status.podIP))
-  console.log(`Host IP: ${hostIps}`)
   return hostIps.some( ip => pods[0].status.podIP == ip);
 };
 
