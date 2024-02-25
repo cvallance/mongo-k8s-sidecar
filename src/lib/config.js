@@ -1,4 +1,5 @@
 import dns from 'dns';
+import logger from './logging.js'
 
 var getMongoPodLabels = function() {
   return process.env.MONGO_SIDECAR_POD_LABELS || false;
@@ -48,20 +49,20 @@ var verifyCorrectnessOfDomain = function(clusterDomain) {
 
   var servers = dns.getServers();
   if (!servers || !servers.length) {
-    console.log("dns.getServers() didn't return any results when verifying the cluster domain '%s'.", clusterDomain);
+    logger.error({ clusterDomain: clusterDomain, servers: servers }, "dns.getServers() didn't return any results when verifying the cluster domain");
     return;
   }
 
   // In the case that we can resolve the DNS servers, we get the first and try to retrieve its host.
   dns.reverse(servers[0], function(err, host) {
     if (err) {
-      console.warn("Error occurred trying to verify the cluster domain '%s'",  clusterDomain);
+      logger.warn({ clusterDomain: clusterDomain, servers: servers, err: err }, "Error occurred trying to verify the cluster domain");
     }
     else if (host.length < 1 || !host[0].endsWith(clusterDomain)) {
-      console.warn("Possibly wrong cluster domain name! Detected '%s' but expected similar to '%s'",  clusterDomain, host);
+      logger.warn({ clusterDomain: clusterDomain, host: host }, "Possibly wrong cluster domain name! Detected expected cluster domain to be similar to hostname");
     }
     else {
-      console.log("The cluster domain '%s' was successfully verified.", clusterDomain);
+      logger.info({ clusterDomain: clusterDomain}, "The cluster domain was successfully verified.");
     }
   });
 };
@@ -78,7 +79,7 @@ var getK8sMongoServiceName = function() {
  */
 var getMongoDbPort = function() {
   var mongoPort = process.env.MONGO_PORT || 27017;
-  console.log("Using mongo port: %s", mongoPort);
+  logger.info( {port: mongoPort}, `Using mongo port: ${mongoPort}`);
   return mongoPort;
 };
 
@@ -89,7 +90,7 @@ var isConfigRS = function() {
   var configSvr = (process.env.CONFIG_SVR || '').trim().toLowerCase();
   var configSvrBool = /^(?:y|yes|true|1)$/i.test(configSvr);
   if (configSvrBool) {
-    console.log("ReplicaSet is configured as a configsvr");
+    logger.info({configSvr: configSvr}, "ReplicaSet is configured as a configsvr");
   }
 
   return configSvrBool;

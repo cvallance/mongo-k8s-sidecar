@@ -2,7 +2,7 @@
 import pino from 'pino'
 import config from './config.js'
 const logger = pino({
-  level: config.loglevel,
+  level: process.env.LOG_LEVEL || 'info',
   transport: {
     target: 'pino-pretty'
   }

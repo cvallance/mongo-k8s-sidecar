@@ -4,7 +4,7 @@ import k8s  from './lib/k8s.js';
 import config from './lib/config.js';
 import logger from './lib/logging.js'
 
-logger.log('Starting up mongo-k8s-sidecar');
+logger.info('Starting up mongo-k8s-sidecar');
 const never = new Promise(() => {}) // wait forever
 
 worker.init(async function(err) {

@@ -26,7 +26,7 @@ var init = function(done) {
     hostIps = addr.map( a => a.address );
     hostIpAndPort = hostIps[0] + ':' + config.mongoPort;
 
-    logger.log({hostname: hostName, podIPs: hostIps}, 'finished initialising')
+    logger.info({hostname: hostName, podIPs: hostIps}, 'finished initialising')
     done();
   });
 };
@@ -50,7 +50,7 @@ var workloop = async function workloop() {
     }
 
     if (!pods.length) {
-      logger.log('No pods are currently running, probably just give them some time.');
+      logger.info('No pods are currently running, probably just give them some time.');
       return
     }
 
@@ -117,7 +117,7 @@ var inReplicaSet = async function(db, pods, status) {
   }
 
   if (!primaryExists && podElection(pods)) {
-    logger.log('Pod has been elected as a secondary to do primary work');
+    logger.info('Pod has been elected as a secondary to do primary work');
     return primaryWork(db, pods, members, true);
   }
 };
@@ -151,20 +151,20 @@ var notInReplicaSet = async function(db, pods) {
 
   let inReplSet = await Promise.all(testRequests)
   if (inReplSet.some((r)=>r)) {
-    logger.log("Some other pod is already part of the replica set. Nothing to do.")
+    logger.info("Some other pod is already part of the replica set. Nothing to do.")
     return
   }
   
   if (podElection(pods)) {
-    logger.log('Pod has been elected for replica set initialization');
+    logger.info('Pod has been elected for replica set initialization');
     var primary = pods[0]; // After the sort election, the 0-th pod should be the primary.
     var primaryStableNetworkAddressAndPort = getPodStableNetworkAddressAndPort(primary);
     // Prefer the stable network ID over the pod IP, if present.
     var primaryAddressAndPort = primaryStableNetworkAddressAndPort || hostIpAndPort;
-    logger.log({primary: primaryAddressAndPort}, "Start initialising replicate set")
+    logger.info({primary: primaryAddressAndPort}, "Start initialising replicate set")
     return mongo.initReplSet(db, primaryAddressAndPort);
   } else {
-    logger.log('Pod has not been elected for replica set initialization');
+    logger.info('Pod has not been elected for replica set initialization');
   }
 
 };
@@ -183,7 +183,7 @@ var invalidReplicaSet = async function(db, pods, status) {
     return
   }
 
-  logger.log("Won the pod election, forcing re-initialization");
+  logger.info("Won the pod election, forcing re-initialization");
   var addrToAdd = addrToAddLoop(pods, members);
   var addrToRemove = addrToRemoveLoop(members);
 
