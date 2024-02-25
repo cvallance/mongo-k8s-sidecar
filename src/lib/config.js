@@ -119,6 +119,7 @@ export default {
   mongoSSLAllowInvalidCertificates: stringToBool(process.env.MONGO_SSL_ALLOW_INVALID_CERTIFICATES),
   mongoSSLAllowInvalidHostnames: stringToBool(process.env.MONGO_SSL_ALLOW_INVALID_HOSTNAMES),
   env: process.env.NODE_ENV || 'local',
+  loglevel: process.env.LOG_LEVEL || 'info',
   mongoPodLabels: getMongoPodLabels(),
   mongoPodLabelCollection: getMongoPodLabelCollection(),
   k8sROServiceAddress: getk8sROServiceAddress(),
