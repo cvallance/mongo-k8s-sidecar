@@ -1,9 +1,10 @@
-var mongo = require('./mongo');
-var k8s = require('./k8s');
-var config = require('./config');
-var moment = require('moment');
-var dns = require('dns');
-var os = require('os');
+import mongo from './mongo.js';
+import k8s from './k8s.js';
+import config from './config.js';
+import moment from 'moment';
+
+import dns from 'dns';
+import os from 'os';
 
 var loopSleepSeconds = config.loopSleepSeconds;
 var unhealthySeconds = config.unhealthySeconds;
@@ -131,6 +132,7 @@ var primaryWork = async function(db, pods, members, shouldForce) {
     console.log('Addresses to remove: ', addrToRemove);
 
     await mongo.addNewReplSetMembers(db, addrToAdd, addrToRemove, shouldForce);
+    
   }
 };
 
@@ -276,7 +278,7 @@ var getPodStableNetworkAddressAndPort = function(pod) {
   return pod.metadata.name + "." + config.k8sMongoServiceName + "." + pod.metadata.namespace + ".svc." + clusterDomain + ":" + mongoPort;
 };
 
-module.exports = {
+export default {
   init: init,
   workloop: workloop
 };

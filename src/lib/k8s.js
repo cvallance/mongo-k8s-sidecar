@@ -1,8 +1,9 @@
-const k8s = require('@kubernetes/client-node');
-var config = require('./config');
-var util = require("util");
+import k8s from '@kubernetes/client-node';
+import config from './config.js';
+import dns from 'dns'
+import ip from 'ip'
 
-fs = require('fs');
+import fs from 'fs';
 
 // Nasty hack to allow intermediate cluster certs 
 // TODO: make this a config option (--insecure) and/or provide anchor for cluster 
@@ -48,7 +49,68 @@ var watchMongoPods = ( callback ) => {
   )
 }
 
-module.exports = {
+export var getPodNameForNode = async (node_url) => {
+  // This obtaines the pod name from the given node URL (host:port)
+  // We use the actual IP to unambigously identify the pod
+
+  // Obtain the IPs - either the node name is the IP (unlikely), or
+  // we can look it up using DNS
+  var url = new URL(`mongodb://${node_url}`)
+  try {
+    let nodeip
+    if (!ip.isV4Format(url.hostname) && !ip.isV6Format(url.hostname)) {
+      
+      nodeip = await new Promise( (resolve,reject) => {
+        dns.lookup(url.hostname, (err,address) => {
+          if (err) {reject(err); return;}
+            resolve(address)
+        })
+      }) 
+    } else {
+      nodeip = url.hostname
+    }
+
+    const pods = await getMongoPods();
+    const pod = pods.filter( p => p.status.podIPs.some( podIp => nodeip === podIp.ip ) );
+    return pod[0].metadata.name;
+  } catch (err) {
+    //console.error(err)
+    console.warn(`Could not lookup IP from hostname to identify pod. Will use first fragment of ${url.hostname} as pod name. This might fail.`)
+    return url.hostname.split('.')[0]
+  }
+
+}
+
+export var patchPodLabels = async (podname, labels) => {
+
+  const podRes = await k8sApi.readNamespacedPod(podname, config.namespace);
+  const labelPatch = {...podRes.body.metadata.labels, ...labels}
+  const patch = [
+    {
+        op: 'replace',
+        path: '/metadata/labels',
+        value: labelPatch,
+    },
+  ];
+  const options = { headers: { 'Content-type': k8s.PatchUtils.PATCH_FORMAT_JSON_PATCH } };
+  const podPatchRes = await k8sApi.patchNamespacedPod(
+      podname,
+      config.namespace,
+      patch,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      options,
+  );
+  console.log('Updated pod labels: ', podname);
+
+}
+
+export default {
   getMongoPods: getMongoPods,
-  watchMongoPods: watchMongoPods
+  watchMongoPods: watchMongoPods,
+  getPodNameForNode: getPodNameForNode,
+  patchPodLabels: patchPodLabels
 };

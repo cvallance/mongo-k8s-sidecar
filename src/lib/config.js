@@ -1,4 +1,4 @@
-var dns = require('dns');
+import dns from 'dns';
 
 var getMongoPodLabels = function() {
   return process.env.MONGO_SIDECAR_POD_LABELS || false;
@@ -104,7 +104,11 @@ var stringToBool = function(boolStr) {
   return isTrue;
 };
 
-module.exports = {
+var redisURL = () => {
+  return process.env.REDIS_URL ;
+}
+
+export default {
   namespace: process.env.KUBE_NAMESPACE,
   username: process.env.MONGODB_USERNAME,
   password: process.env.MONGODB_PASSWORD,
@@ -122,4 +126,5 @@ module.exports = {
   k8sClusterDomain: getK8sClusterDomain(),
   mongoPort: getMongoDbPort(),
   isConfigRS: isConfigRS(),
+  redisURL: redisURL()
 };

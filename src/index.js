@@ -1,6 +1,7 @@
-var worker = require('./lib/worker');
-var k8s = require('./lib/k8s')
-var config = require('./lib/config')
+import worker from './lib/worker.js';
+import label  from './lib/labels.js';
+import k8s  from './lib/k8s.js';
+import config from './lib/config.js';
 
 console.log('Starting up mongo-k8s-sidecar');
 const never = new Promise(() => {}) // wait forever
@@ -28,5 +29,5 @@ worker.init(async function(err) {
   //   if (req) req.abort()
   // }
   
-  worker.workloop();
+  await Promise.all([worker.workloop(), label.workloop()]) 
 });

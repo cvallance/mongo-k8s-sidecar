@@ -1,5 +1,5 @@
-const { MongoClient } = require('mongodb');
-var config = require('./config');
+import { MongoClient } from 'mongodb';
+import config from './config.js';
 
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
@@ -54,7 +54,7 @@ var replSetGetConfig = async function(db) {
 };
 
 var replSetGetStatus = async function(db) {
-  result = db.admin().command({ replSetGetStatus: {} } )
+  const result = db.admin().command({ replSetGetStatus: {} } )
   return result;
 }
 
@@ -81,7 +81,7 @@ var replSetReconfig = async function(db, rsConfig, force) {
 };
 
 var addNewReplSetMembers = async function(db, addrToAdd, addrToRemove, shouldForce) {
-  rsConfig = await replSetGetConfig(db)
+  let rsConfig = await replSetGetConfig(db)
 
   removeDeadMembers(rsConfig, addrToRemove);
   addNewMembers(rsConfig, addrToAdd);
@@ -166,7 +166,7 @@ var isInReplSet = async function(ip) {
   }
 };
 
-module.exports = {
+export default {
   getDb: getDb,
   replSetGetStatus: replSetGetStatus,
   initReplSet: initReplSet,
