@@ -13,6 +13,8 @@ var unhealthySeconds = config.unhealthySeconds;
 var hostIps = false;
 var hostIpAndPort = false;
 
+var firstRun = true;
+
 var init = function(done) {
 
   //Borrowed from here: http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
@@ -61,8 +63,12 @@ var workloop = async function workloop() {
     try {
       logger.debug("Checking MongoDB replica set status")
       var status = await mongo.replSetGetStatus(db)
-      logger.info({rs: status.set, host: status.members.filter( s => s.self)[0].name}, "Already part of the replica set");
-      
+      if (firstRun) {
+        logger.info({rs: status.set, host: status.members.filter( s => s.self)[0].name}, "Already part of the replica set");
+        firstRun = false
+      } else {
+        logger.debug({rs: status.set, host: status.members.filter( s => s.self)[0].name}, "Already part of the replica set");
+      }
       await inReplicaSet(db, pods, status);
     } catch (err) {
       try {
