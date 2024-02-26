@@ -2,7 +2,7 @@ import k8s from '@kubernetes/client-node';
 import config from './config.js';
 import dns from 'dns'
 import ip from 'ip'
-
+import logger from './logging.js'
 import fs from 'fs';
 
 // Nasty hack to allow intermediate cluster certs 
@@ -42,10 +42,10 @@ var watchMongoPods = ( callback ) => {
       var labelsMatch = labels.every( k => podKeys.includes(k.key) && apiObj.metadata.labels[k.key] == k.value )
       if (!labelsMatch) return;;
 
-      console.log(`Pod state change observed: ${type} - ${apiObj.metadata.name}`)
+      logger.info(`Pod state change observed: ${type} - ${apiObj.metadata.name}`)
       callback() 
     }, // callback is called when state changes
-    (err) => console.error(err) // done callback is called if the watch terminates normally
+    (err) => logger.error(err) // done callback is called if the watch terminates normally
   )
 }
 
@@ -58,24 +58,35 @@ export var getPodNameForNode = async (node_url) => {
   var url = new URL(`mongodb://${node_url}`)
   try {
     let nodeip
-    if (!ip.isV4Format(url.hostname) && !ip.isV6Format(url.hostname)) {
-      
-      nodeip = await new Promise( (resolve,reject) => {
-        dns.lookup(url.hostname, (err,address) => {
-          if (err) {reject(err); return;}
-            resolve(address)
-        })
-      }) 
-    } else {
-      nodeip = url.hostname
+    try {
+      if (!ip.isV4Format(url.hostname) && !ip.isV6Format(url.hostname)) {
+        
+        nodeip = await new Promise( (resolve,reject) => {
+          dns.lookup(url.hostname, (err,address) => {
+            if (err) {reject(err); return;}
+              resolve(address)
+          })
+        }) 
+      } else {
+        nodeip = url.hostname
+      }
+    } catch (err) {
+      logger.warn({url: node_url, hostname: url.hostname}, `Could not lookup IP from rs hostname to identify pod.`)
+      throw err
     }
 
-    const pods = await getMongoPods();
-    const pod = pods.filter( p => p.status.podIPs.some( podIp => nodeip === podIp.ip ) );
-    return pod[0].metadata.name;
+    try {
+      const pods = await getMongoPods();
+      const pod = pods.filter( p => p.status.podIPs.some( podIp => nodeip === podIp.ip ) );
+      return pod[0].metadata.name;
+    } catch (err) {
+      logger.warn({ip: nodeip, hostname: url.hostname}, "Could not find pod with given ip")
+      throw err
+    }
+
   } catch (err) {
     //console.error(err)
-    console.warn(`Could not lookup IP from hostname to identify pod. Will use first fragment of ${url.hostname} as pod name. This might fail.`)
+    logger.warn({url: node_url, hostname: url.hostname}, `Will use first fragment of ${url.hostname} as pod name. This might fail.`)
     return url.hostname.split('.')[0]
   }
 
@@ -104,8 +115,7 @@ export var patchPodLabels = async (podname, labels) => {
       undefined,
       options,
   );
-  console.log('Updated pod labels: ', podname);
-
+  
 }
 
 export default {
