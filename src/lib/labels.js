@@ -5,15 +5,21 @@ import logger from './logging.js'
 
 import config from './config.js';
 import Queue from 'bee-queue'
+import redis from 'redis'
 
 const never = new Promise(() => {}) // wait forever
 
-const updateStatusQueue = new Queue('rs-status',
-                                {sendEvents: true, 
-                                 isWorker: true, 
-                                 removeOnSuccess: true,
-                                 removeOnFailure: true,
-                                 activateDelayedJobs: true})
+const shared_bee_queue_config = { 
+  redis: redis.createClient(config.redisURL),
+  removeOnSuccess: true,
+  removeOnFailure: true,
+  activateDelayedJobs: true
+}
+
+const updateStatusQueue = new Queue('rs-status-updates',
+                                { ...shared_bee_queue_config, 
+                                  isWorker: true, 
+                                })
 
 updateStatusQueue.on('ready', () => {
   updateStatusQueue.process( async (job) => {
@@ -29,11 +35,15 @@ updateStatusQueue.on('ready', () => {
         (e.path[1] === 'state' || e.path[1] === 'health') && 
         (e.type === 'CHANGE' || e.type === 'CREATE' ) 
       )      
-      const hosts = stateChanges.map( s => rsStatus.members[s.path[0]] )
-      
+
+      // Filter for unique members - see: https://codeburst.io/javascript-array-distinct-5edc93501dc4
+      const id = stateChanges.map( s => s.path[0] ).filter( (value,index,self) => self.indexOf(value) === index )
+      const hosts = id.map( i => rsStatus.members[i] )
+
       hosts.map( async h => 
         labelUpdateQueue.createJob({ 
           name: await getPodNameForNode(h.name), 
+          set: rsStatus.set,
           state: h.stateStr,
           health: h.health
         }).save()
@@ -54,18 +64,19 @@ updateStatusQueue.on('ready', () => {
   });
 })
 
-const labelUpdateQueue = new Queue('label-update', {isWorker: true})
+const labelUpdateQueue = new Queue('label-updates', {...shared_bee_queue_config, isWorker: true})
 labelUpdateQueue.on('ready', () => {
   labelUpdateQueue.process( async (job) => {
 
     logger.trace({ queue: 'label-update', jobId: job.id, jobData: job.data }, 'started processing')
     try {
       
-      var {name, state, health} = job.data
+      var {name, state, health, set} = job.data
       var podname = await getPodNameForNode(name)
       const labels = { 
         'replicaset.mongodb.com/state': state,
-        'replicaset.mongodb.com/health': (health === 1) ? 'healthy' : 'unhealthy' 
+        'replicaset.mongodb.com/health': (health === 1) ? 'healthy' : 'unhealthy' ,
+        'replicaset.mongodb.com/set': set
       }
       await patchPodLabels(podname, labels)
       logger.info({ podname: podname, labels: labels }, 'patched pod labels')
@@ -103,7 +114,7 @@ var workloop = async () => {
     }
   } catch (err) {
     // We are not yet part of the cluster
-    logger.error(err, `Could not access/initialise replica set update queue. Trying in ${config.loopSleepSeconds} sec.`)
+    logger.error(err, `Could not access/initialise replica set update queue. Retrying in ${config.loopSleepSeconds} sec.`)
     setTimeout(workloop, config.loopSleepSeconds * 1000)
   } finally {
     if (db && close) close()

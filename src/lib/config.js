@@ -106,7 +106,7 @@ var stringToBool = function(boolStr) {
 };
 
 var redisURL = () => {
-  return process.env.REDIS_URL ;
+  return process.env.REDIS_URL || "localhost:6379" ;
 }
 
 export default {
