@@ -47,7 +47,7 @@ async function getDesiredState() {
     var rsStatus = await mongo.replSetGetStatus(db)
     const data = await Promise.all(rsStatus.members.map( async m => {
       return [ await getPodNameForNode(m.name), {
-        state: m.stateStr,
+        state: stateDescriptions(m.state),
         health: (m.health === 1) ? 'healthy' : 'unhealthy',
         set: rsStatus.set
       }]
@@ -56,6 +56,15 @@ async function getDesiredState() {
     return Object.fromEntries(data)
   } finally {
     if (close) await close()
+  }
+}
+
+function stateDescriptions( state ) {
+  switch (state) {
+    case 1 : return 'PRIMARY'
+    case 2 : return 'SECONDARY'
+    case 8 : return 'UNHEALTHY/UNREACHABLE'
+    default: return 'UNKNOWN'
   }
 }
 
@@ -79,4 +88,19 @@ async function getDesiredState() {
     logger.info({ podname: podname, labels: labels }, 'patching pod labels')
     return patchPodLabels(podname, labels)
 
+}
+
+/**
+ * Ensures that label values adhere with k8s constraints
+ * 
+ * k8s says: a valid label must be an empty string or consist of 
+ * alphanumeric characters, '-', '_' or '.', and must start and end 
+ * with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  
+ * or '12345', regex used for validation is
+ *  '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+ * 
+ * @param {*} value 
+ */
+function filterValue(value) {
+  throw new Error("Not yet implemented")
 }
