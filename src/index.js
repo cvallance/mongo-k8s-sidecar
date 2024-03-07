@@ -1,5 +1,5 @@
-import logger from './lib/logging.js'
-import mongo from './lib/mongo.js'
+import logger from './lib/logging.js';
+import mongo from './lib/mongo.js';
 
 import { subscribeMemberState } from './lib/redis.js';
 import { initialiseReplicaSet } from './actions/initialise-replica-set.js';
