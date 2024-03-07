@@ -1,9 +1,14 @@
 import { MongoClient } from 'mongodb';
 import config from './config.js';
 
+
 var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
-var getDb = function(host) {
+export function test() {
+  
+}
+
+export var getDb = function(host) {
   //If they called without host like getDb(function(err, db) { ... });
 
   var mongoOptions = {replicaSet: "rs0",directConnection: true};
@@ -25,8 +30,7 @@ var getDb = function(host) {
 
   var client = new MongoClient(uri, mongoOptions);
   var mongoDb = client.db(config.database);
-  
-  return {db : mongoDb, close : () => {client.close()}}
+  return {db : mongoDb, close : async () => {await client.close()}}
 }
 //   mongoDb.open(function (err, db) {
 //     if (err) {
@@ -48,18 +52,19 @@ var getDb = function(host) {
 //   });
 // };
 
-var replSetGetConfig = async function(db) {
+
+export var replSetGetConfig = async function(db) {
   const result = await db.admin().command({ replSetGetConfig: 1 } )
   return result.config;
 };
 
-var replSetGetStatus = async function(db) {
+export var replSetGetStatus = async function(db) {
   const result = db.admin().command({ replSetGetStatus: {} } )
   return result;
 }
 
-var initReplSet = async function(db, hostIpAndPort) {
-  console.trace('initReplSet', hostIpAndPort);
+export var initReplSet = async function(db, hostIpAndPort) {
+  // console.trace('initReplSet', hostIpAndPort);
 
   return db.admin().command({ replSetInitiate: { _id: "rs0", members: [ {_id:0, host: hostIpAndPort} ]} } )
 
@@ -73,14 +78,14 @@ var initReplSet = async function(db, hostIpAndPort) {
 }
 
 var replSetReconfig = async function(db, rsConfig, force) {
-  console.trace('replSetReconfig', rsConfig);
+  // console.trace('replSetReconfig', rsConfig);
 
   rsConfig.version++;
 
   return db.admin().command({ replSetReconfig: rsConfig, force: force }, {})
 };
 
-var addNewReplSetMembers = async function(db, addrToAdd, addrToRemove, shouldForce) {
+export async function addNewReplSetMembers(db, addrToAdd, addrToRemove, shouldForce) {
   let rsConfig = await replSetGetConfig(db)
 
   removeDeadMembers(rsConfig, addrToRemove);
@@ -152,7 +157,7 @@ var removeDeadMembers = function(rsConfig, addrsToRemove) {
   }
 };
 
-var isInReplSet = async function(ip) {
+export var isInReplSet = async function(ip) {
   var {db,close} = getDb(ip)
   try {
     rsConfig = await replSetGetConfig(db)

@@ -106,7 +106,9 @@ var stringToBool = function(boolStr) {
 };
 
 var redisURL = () => {
-  return process.env.REDIS_URL || "localhost:6379" ;
+  const redisURL = process.env.REDIS_URL || "redis://localhost:6379" ;
+  logger.info({redisURL: redisURL}, `Redis URL ${redisURL}`)
+  return new URL(redisURL)
 }
 
 export default {

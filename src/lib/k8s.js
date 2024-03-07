@@ -118,9 +118,42 @@ export var patchPodLabels = async (podname, labels) => {
   
 }
 
+/**
+ * @param pod this is the Kubernetes pod, containing the info.
+ * @returns string - podIp the pod's IP address with the port from config attached at the end. Example
+ * WWW.XXX.YYY.ZZZ:27017. It returns undefined, if the data is insufficient to retrieve the IP address.
+ */
+var getPodIpAddressAndPort = function(pod) {
+  if (!pod || !pod.status || !pod.status.podIP) {
+    return;
+  }
+
+  return pod.status.podIP + ":" + config.mongoPort;
+};
+
+/**
+ * Gets the pod's address. It can be either in the form of
+ * '<pod-name>.<mongo-kubernetes-service>.<pod-namespace>.svc.cluster.local:<mongo-port>'. See:
+ * <a href="https://kubernetes.io/docs/concepts/abstractions/controllers/statefulsets/#stable-network-id">Stateful Set documentation</a>
+ * for more details. If those are not set, then simply the pod's IP is returned.
+ * @param pod the Kubernetes pod, containing the information from the k8s client.
+ * @returns string the k8s MongoDB stable network address, or undefined.
+ */
+var getPodStableNetworkAddressAndPort = function(pod) {
+  if (!config.k8sMongoServiceName || !pod || !pod.metadata || !pod.metadata.name || !pod.metadata.namespace) {
+    return;
+  }
+
+  var clusterDomain = config.k8sClusterDomain;
+  var mongoPort = config.mongoPort;
+  return pod.metadata.name + "." + config.k8sMongoServiceName + "." + pod.metadata.namespace + ".svc." + clusterDomain + ":" + mongoPort;
+};
+
 export default {
   getMongoPods: getMongoPods,
   watchMongoPods: watchMongoPods,
   getPodNameForNode: getPodNameForNode,
-  patchPodLabels: patchPodLabels
+  patchPodLabels: patchPodLabels,
+  getPodIpAddressAndPort: getPodIpAddressAndPort,
+  getPodStableNetworkAddressAndPort: getPodStableNetworkAddressAndPort
 };

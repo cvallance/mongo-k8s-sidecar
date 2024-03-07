@@ -6,6 +6,7 @@ import logger from './logging.js';
 
 import dns from 'dns';
 import os from 'os';
+import redisLock from 'redis-lock';
 
 var loopSleepSeconds = config.loopSleepSeconds;
 var unhealthySeconds = config.unhealthySeconds;
@@ -32,6 +33,49 @@ var init = function(done) {
     done();
   });
 };
+
+
+// var ensureReplicaSetIsInitialised = async () => {
+
+//   try {
+
+//     const lock = redisLock(redis.createClient({url: config.redisURL})) 
+//     var releaseLock = await lock("initialise-replica-set")
+
+//     try {
+//       var status = await mongo.replSetGetStatus(db)
+//     } catch (err) {
+//       try {
+//         if (err.code && err.code == 94) {
+//           logger.info("MongoDB replica set not yet initialised. Initialising now.")
+//           var pods = getMongoPods()
+//           var primary = pods.filter( pod => pod.status.podIPs.some(hostIps[0]) )
+
+//           var primaryStableNetworkAddressAndPort = getPodStableNetworkAddressAndPort(primary);
+//           // Prefer the stable network ID over the pod IP, if present.
+//           var primaryAddressAndPort = primaryStableNetworkAddressAndPort || hostIpAndPort;
+//           logger.info({primary: primaryAddressAndPort}, "Start initialising replicate set")
+//           await mongo.initReplSet(db, primaryAddressAndPort);
+
+//         }
+//         else if (err.code && err.code == 93) {
+//           logger.error({reason: "invalid replica set"}, "MongoDB replica set is invalid. Rebuilding now.")
+//           logger.debug("Starting reconciliation attempt")
+//           await invalidReplicaSet(db, pods, status);
+//           logger.debug("Finished reconsiliation")
+//         }
+//         else {
+//           logger.error(err, "Obtaining replica set status failed")
+//         }
+//       } catch (errr) {
+//         logger.error(errr, 'Error initialising replica-set');
+//       }
+
+//     } finally {
+//       if (releaseLock) await releaseLock()
+//     }
+//   }
+// }
 
 var workloop = async function workloop() {
   if (!hostIps || !hostIpAndPort) {
