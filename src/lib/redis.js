@@ -1,23 +1,6 @@
 import redis from 'redis'
 import config from './config.js'
-import redisLock from 'redis-lock'
 import logger from './logging.js'
-
-// -----------------------------------------------------------------------------------------
-// Locks and MuTex
-// -----------------------------------------------------------------------------------------
-const locksmith = redis.createClient({url: config.redisURL})
-await locksmith.connect();
-logger.trace("Connected locksmith")
-
-process.on("exit", (code) => {
-  if (locksmith) try { locksmith.quit() } catch { /*fail silently */ }
-})
-
-export const initialiseReplicaSetLock = async () => {
-  const lock = redisLock(locksmith)
-  return lock("initialise-replica-set", 5000)
-}
 
 // -----------------------------------------------------------------------------------------
 // Key-Value store
