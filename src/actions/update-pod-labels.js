@@ -16,6 +16,7 @@ export async function updatePodLabels() {
         case 'set': patchPodLabels(d.path[0], {'replicaset.mongodb.com/set': undefined}); break;
         default: break;
       }
+      logger.info({pod: d.path[0], label: d.path[1]}, 'Removed pod label')
     } else {
       switch (d.path[1]) {
         case 'state': patchPodLabels(d.path[0], {'replicaset.mongodb.com/state': d.value}); break;
@@ -23,6 +24,7 @@ export async function updatePodLabels() {
         case 'set': patchPodLabels(d.path[0], {'replicaset.mongodb.com/set': d.value}); break;
         default: break;
       }
+      logger.info({pod: d.path[0], label: d.path[1]}, 'Updated pod label')
     }
   })
 }
