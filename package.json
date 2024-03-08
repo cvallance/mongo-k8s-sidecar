@@ -44,6 +44,8 @@
     "mongodb": "^6.3.0",
     "pem": "^1.9.4",
     "pino": "^8.19.0",
+    "pino-elasticsearch": "^8.0.0",
+    "pino-multi-stream": "^6.0.0",
     "pino-pretty": "^10.3.1",
     "redis": "^4.6.13"
   }
