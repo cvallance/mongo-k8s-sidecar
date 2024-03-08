@@ -63,7 +63,7 @@ function stateDescriptions( state ) {
   switch (state) {
     case 1 : return 'PRIMARY'
     case 2 : return 'SECONDARY'
-    case 8 : return 'UNHEALTHY/UNREACHABLE'
+    case 8 : return 'UNHEALTHY-UNREACHABLE'
     default: return 'UNKNOWN'
   }
 }
